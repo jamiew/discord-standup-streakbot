@@ -274,7 +274,7 @@ const processMessageForStreak = (msg) => {
       } (${msg.author.tag}) at ${new Date().toISOString()}`
     );
     msg.author.send(
-      `Hey there! It looks like you've posted multiple times to the TGD server's ${msg.channel.name} channel today. Thanks for your commentary! We'd like to avoid overshadowing anyone's daily status update with other conversations, so we'd appreciate it if you would move this conversation to another channel, or wait until tomorrow to post your next update. Take it easy!`
+      `Hey there! It looks like you've posted multiple times to the server's ${msg.channel.name} channel today. Thanks for your commentary! We'd like to avoid overshadowing anyone's daily status update with other conversations, so we'd appreciate it if you would move this conversation to another channel, or wait until tomorrow to post your next update. Take it easy!`
     );
   }
 };

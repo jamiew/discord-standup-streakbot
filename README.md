@@ -2,7 +2,7 @@
 
 Standup Cop. A Discord bot for tracking async standup posts in a dedicated `#standups` channel. Rewards users who post daily; chastises users who post more than once per day, or otherwise go off-topic.
 
-Forked and extended from [talrnu/tgd-streakbot](https://github.com/talrnu/tgd-streakbot)
+Forked and extended from [talrnu/discord-standup-streakbot](https://github.com/talrnu/discord-standup-streakbot)
 
 ## How it works
 
@@ -39,4 +39,4 @@ Run the bot using nodemon, auto-restarting on changes to `bot.js`:
 npm run dev
 ```
 
-The command prompt should say "Logged in as TGD StreakBot". The bot should appear in the server's user list as online. Leave the command prompt open for as long as you want the bot to run.
+The command prompt should say "Logged in as Discord Standup StreakBot". The bot should appear in the server's user list as online. Leave the command prompt open for as long as you want the bot to run.

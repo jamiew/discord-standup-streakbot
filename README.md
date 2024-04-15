@@ -12,13 +12,19 @@ You can change the channel this bot operates in, as well as the hour and minute 
 
 Expected to be installed on a single server (guild). Does not support multiple servers well.
 
-## To run this bot
+## Installation
+
+### Creating and installing Discord bot
 
 Create an app and a bot in the [Discord Developer Portal](https://discord.com/developers/applications). Make sure to enable "message intents" since we're using raw message reading/writing. To get the initial bot token, click "Reset token" on the Bot page.
 
 Install the bot to your server; you'll need to put in your `client_id` here. The default permissions are read and send mesages
 
 e.g. <https://discord.com/oauth2/authorize?client_id=[YOUR_CLIENT_ID_HERE]&scope=bot&permissions=3072>
+
+Lastly, make sure the bot has permission to access your `#standups` channel (or whatever you set CHANNEL_NAME to)
+
+### Setting up and running the code
 
 Install nodejs if you don't have it, and clone this repository from GitHub.
 

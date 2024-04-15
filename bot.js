@@ -47,7 +47,7 @@ const midWeekDayOfWeek = process.env.MID_WEEK_DAY_OF_WEEK
   ? parseInt(process.env.MID_WEEK_DAY_OF_WEEK)
   : 3;
 
-const channelName = process.env.CHANNEL_NAME || "standups";
+const channelName = process.env.CHANNEL_NAME ?? "standups";
 
 let dayStartJob;
 let morningAnnouncementJob;
@@ -124,12 +124,10 @@ client.on("ready", () => {
   // broadcastMorningAnnouncement();
   console.log("Client startup complete.");
 });
-console.log("client ready event configured");
 
 client.on("error", (error) => {
   console.error(error);
 });
-console.log("client error event configured");
 
 client.on("disconnect", (msg, code) => {
   if (code === 0) return console.error(msg);
@@ -137,7 +135,6 @@ client.on("disconnect", (msg, code) => {
   disconnectCleanup();
   connect();
 });
-console.log("client disconnect event configured");
 
 client.on("message", (message) => {
   console.log(`message... @${message?.author?.username}: ${message?.content}`);
@@ -151,7 +148,6 @@ client.on("message", (message) => {
     processMessageForStreak(message);
   }
 });
-console.log("client message event configured");
 
 const disconnectCleanup = () => {
   console.log("Cleaning up after disconnect...");
@@ -163,18 +159,16 @@ const disconnectCleanup = () => {
   reconnectJob = null;
 };
 
-const disconnect = () => {
+const disconnect = async () => {
   console.log("Disconnecting...");
-  client.destroy();
+  await client.destroy();
 };
 
-const connect = () => {
+const connect = async () => {
   console.log("Connecting...");
-  client.login(process.env.BOT_TOKEN);
+  await client.login(process.env.BOT_TOKEN);
+  console.log("Successfully connected.");
 };
-
-connect();
-console.log("initial connection established");
 
 const broadcastNewDay = () => {
   const channel = client.channels.find((c) => c.name === channelName);
@@ -215,7 +209,7 @@ const getUsersWhoPostedYesterday = () => {
     activeStreakUsers.forEach((user) => {
       // client.users.find can return null if the user hasn't been cached by the client yet.
       const username = user.mentionsEnabled
-        ? client.users.find((u) => u.id === user.userID) || user.username
+        ? client.users.find((u) => u.id === user.userID) ?? user.username
         : user.username;
       listText += `\n\t${username}: ${user.streak} (best: ${user.bestStreak})`;
     });
@@ -235,7 +229,7 @@ const getUsersWhoCouldLoseTheirStreak = () => {
     atRiskUsers.forEach((user) => {
       // client.users.find can return null if the user hasn't been cached by the client yet.
       const username = user.mentionsEnabled
-        ? client.users.find((u) => u.id === user.userID) || user.username
+        ? client.users.find((u) => u.id === user.userID) ?? user.username
         : user.username;
       listText += `\n\t${username}: ${user.streak} (best: ${user.bestStreak})`;
     });
@@ -375,9 +369,11 @@ const addToStreak = (msg, dbUser) => {
     bestStreak: 1,
     lastUpdate: new Date(),
   };
+
   let isNewBest = true;
   let isNewStreak = false;
   const user = dbUser.value();
+
   if (!user.bestStreak) {
     console.log(`${msg.author.username} started their first streak`);
     isNewStreak = true;
@@ -398,13 +394,25 @@ const addToStreak = (msg, dbUser) => {
       isNewBest = false;
     }
   }
+
   if (isNewStreak) {
     msg.react("☄");
   }
+
   if (isNewBest) {
     msg.react("🌟");
   } else {
     msg.react("⭐");
   }
+
   dbUser.assign(streakData).write();
 };
+
+async function main() {
+  await connect();
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

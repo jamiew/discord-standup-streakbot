@@ -3,10 +3,10 @@ Description=Run Bot
 
 [Service]
 Environment=PATH=/usr/bin:/usr/local/bin
-WorkingDirectory=/home/tgdbot/tgd-streakbot
-ExecStart=/home/tgdbot/tgd-streakbot/bot.js
+WorkingDirectory=/home/standupbot/discord-standup-streakbot
+ExecStart=/home/standupbot/discord-standup-streakbot/bot.js
 Restart=always
-User=tgdbot
+User=standupbot
 Environment=NODE_ENV=production
 
 [Install]

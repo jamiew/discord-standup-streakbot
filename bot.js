@@ -137,7 +137,13 @@ client.on("disconnect", (msg, code) => {
 });
 
 client.on("message", (message) => {
-  console.log(`message... @${message?.author?.username}: ${message?.content}`);
+  const currentChannelName = message.channel.name;
+  const currentChannelType = message.channel.type;
+  const channelDebug =
+    currentChannelType == "dm" ? "DM" : `#${currentChannelName}`;
+  console.log(
+    `message received (${channelDebug}): @${message.author.username}: ${message.content}`
+  );
   const channel = client.channels.find((c) => c.name === channelName);
   if (
     channel &&

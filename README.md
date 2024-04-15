@@ -19,7 +19,7 @@ Install nodejs if you don't have it, and clone this repository from GitHub.
 Setup your .env config:
 
 1. Copy `.env.sample` to `.env` and edit
-2. At minimum change `BOT_SECRET=[bot_token]`, replacing [bot_token] with the bot's secret token copied from the Discord dev portal.
+2. At a minimum change `BOT_SECRET=[bot_token]`, replacing [bot_token] with the bot's secret token copied from the Discord dev portal.
 
 Install dependencies:
 

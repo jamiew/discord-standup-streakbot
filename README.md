@@ -1,10 +1,16 @@
 # standup-bot
 
+Standup Cop. A Discord bot for tracking async standup posts in a dedicated `#standups` channel. Rewards users who post daily; chastises users who post more than once per day, or otherwise go off-topic.
+
+Forked and extended from [talrnu/tgd-streakbot](https://github.com/talrnu/tgd-streakbot)
+
 ## How it works
 
-As users post messages, the bot will create and update a file named `db.json`. You can modify or delete this file yourself, but you need to restart the bot to handle changes you make. Either close the command prompt and start a new one, or input Ctrl+C to kill the bot, then run the "node ." command again.
+As users post messages, the bot will update a file named `db.json`. You can modify or delete this file yourself, but you need to restart the bot to handle changes you make. Either close the command prompt and start a new one, or input Ctrl+C to kill the bot, then run the "node ." command again.
 
-You can change the channel this bot operates in, as well as the hour and minute that it considers the day to start at. These are constant values near the top of the code in bot.js. You'll need to restart the bot for it to detect these changes.
+You can change the channel this bot operates in, as well as the hour and minute that it considers the day to start at. These are constant values near the top of the code in `bot.js`. You'll need to restart the bot for it to detect these changes.
+
+Expected to be installed on a single server (guild). Does not support multiple servers well.
 
 ## To run this bot
 

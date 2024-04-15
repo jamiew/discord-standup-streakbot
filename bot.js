@@ -15,39 +15,39 @@ db.defaults({
 
 const ONE_DAY = new Date(1000 * 60 * 60 * 24);
 
-const dayStartHour = process.env.dayStartHour
-  ? parseInt(process.env.dayStartHour)
+const dayStartHour = process.env.DAY_START_HOUR
+  ? parseInt(process.env.DAY_START_HOUR)
   : 0;
-const dayStartMinute = process.env.dayStartMinute
-  ? parseInt(process.env.dayStartMinute)
+const dayStartMinute = process.env.DAY_START_MINUTE
+  ? parseInt(process.env.DAY_START_MINUTE)
   : 0;
 
-const morningAnnouncementHour = process.env.morningAnnouncementHour
-  ? parseInt(process.env.morningAnnouncementHour)
+const morningAnnouncementHour = process.env.MORNING_ANNOUNCEMENT_HOUR
+  ? parseInt(process.env.MORNING_ANNOUNCEMENT_HOUR)
   : 7;
-const morningAnnouncementMinute = process.env.morningAnnouncementMinute
-  ? parseInt(process.env.morningAnnouncementMinute)
+const morningAnnouncementMinute = process.env.MORNING_ANNOUNCEMENT_MINUTE
+  ? parseInt(process.env.MORNING_ANNOUNCEMENT_MINUTE)
   : 0;
 
-const midDayReminderHour = process.env.midDayReminderHour
-  ? parseInt(process.env.midDayReminderHour)
+const midDayReminderHour = process.env.MID_DAY_REMINDER_HOUR
+  ? parseInt(process.env.MID_DAY_REMINDER_HOUR)
   : 12;
-const midDayReminderMinute = process.env.midDayReminderMinute
-  ? parseInt(process.env.midDayReminderMinute)
+const midDayReminderMinute = process.env.MID_DAY_REMINDER_MINUTE
+  ? parseInt(process.env.MID_DAY_REMINDER_MINUTE)
   : 0;
 
-const midWeekSummaryHour = process.env.midWeekSummaryHour
-  ? parseInt(process.env.midWeekSummaryHour)
+const midWeekSummaryHour = process.env.MID_WEEK_SUMMARY_HOUR
+  ? parseInt(process.env.MID_WEEK_SUMMARY_HOUR)
   : 13;
-const midWeekSummaryMinute = process.env.midWeekSummaryMinute
-  ? parseInt(process.env.midWeekSummaryMinute)
+const midWeekSummaryMinute = process.env.MID_WEEK_SUMMARY_MINUTE
+  ? parseInt(process.env.MID_WEEK_SUMMARY_MINUTE)
   : 0;
 
-const midWeekDayOfWeek = process.env.midWeekDayOfWeek
-  ? parseInt(process.env.midWeekDayOfWeek)
+const midWeekDayOfWeek = process.env.MID_WEEK_DAY_OF_WEEK
+  ? parseInt(process.env.MID_WEEK_DAY_OF_WEEK)
   : 3;
 
-const channelName = process.env.channelName || "daily-standup";
+const channelName = process.env.CHANNEL_NAME || "standups";
 
 let dayStartJob;
 let morningAnnouncementJob;

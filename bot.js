@@ -170,7 +170,7 @@ const disconnect = () => {
 
 const connect = () => {
   console.log("Connecting...");
-  client.login(process.env.BOT_SECRET);
+  client.login(process.env.BOT_TOKEN);
 };
 
 connect();

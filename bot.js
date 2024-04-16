@@ -1,13 +1,21 @@
 require("dotenv").config();
 
-const Discord = require("discord.js");
-const client = new Discord.Client();
+const { Client, GatewayIntentBits } = require("discord.js");
 const schedule = require("node-schedule");
-
 const lowdb = require("lowdb");
 const FileSync = require("lowdb/adapters/FileSync");
+
 const adapter = new FileSync("db.json");
 const db = lowdb(adapter);
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+  ],
+});
 
 db.defaults({
   users: [],
@@ -136,23 +144,22 @@ client.on("disconnect", (msg, code) => {
   connect();
 });
 
-client.on("message", (message) => {
+client.on("messageCreate", (message) => {
   const currentChannelName = message.channel.name;
   const currentChannelType = message.channel.type;
   const channelDebug =
     currentChannelType == "dm" ? "DM" : `#${currentChannelName}`;
-  console.log(
-    `message received (${channelDebug}): @${message.author.username}: ${message.content}`
-  );
-  const channel = client.channels.find((c) => c.name === channelName);
-  if (
-    channel &&
-    message.channel.name === channel.name &&
-    message.author.id !== client.user.id
-  ) {
-    console.log(`Processing message received from ${message.author.username}`);
-    processMessageForStreak(message);
+
+  if (message.author.bot) {
+    console.debug("ignoring message from bot");
+    return;
+  } else if (message.channel.name !== channelName) {
+    console.debug("ignoring message not in our standup channel");
+    return;
   }
+
+  console.log(`Processing message received from ${message.author.username}`);
+  processMessageForStreak(message);
 });
 
 const disconnectCleanup = () => {
@@ -274,7 +281,7 @@ const processMessageForStreak = (msg) => {
       } (${msg.author.tag}) at ${new Date().toISOString()}`
     );
     msg.author.send(
-      `Hey there! It looks like you've posted multiple times to the server's ${msg.channel.name} channel today. Thanks for your commentary! We'd like to avoid overshadowing anyone's daily status update with other conversations, so we'd appreciate it if you would move this conversation to another channel, or wait until tomorrow to post your next update. Take it easy!`
+      `Hey there! It looks like you've posted multiple times to the server's ${msg.channel.name} channel today. We'd like to avoid overshadowing anyone's daily status update with other conversations, so we'd appreciate it if you would move this conversation to a thread or another channel. If you want to update your standup, just edit the existing post. Thanks!`
     );
   }
 };

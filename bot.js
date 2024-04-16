@@ -342,9 +342,14 @@ const processMessageForStreak = (msg) => {
         msg.author.username
       } (${msg.author.tag}) at ${new Date().toISOString()}`
     );
-    msg.author.send(
-      `howdy partner, it looks like you posted multiple times to the server's #${msg.channel.name} channel today. We'd like to avoid overshadowing anyone's daily status update with other conversations, so we'd appreciate it if you would move this conversation to a thread or another channel. If you want to update your standup, just edit the existing post. Thanks!`
-    );
+    const reply = `howdy partner, it looks like you posted multiple times to the server's #${msg.channel.name} channel today. We'd like to avoid overshadowing daily status updates with other conversations, so we'd appreciate it if you would move this conversation to a thread or another channel. If you want to update your standup, just edit the existing post. thx`;
+    // not everybody can accept DMs
+    // msg.author.send(reply)
+    // so just post it publicly
+    msg
+      .reply(reply)
+      .then(() => console.log("replied"))
+      .catch(console.error);
   }
 };
 

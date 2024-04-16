@@ -26,7 +26,7 @@ Lastly, make sure the bot has permission to access your `#standups` channel (or 
 
 ### Setting up and running the code
 
-Install nodejs if you don't have it, and clone this repository from GitHub.
+Install nodejs and [pnpm](https://pnpm.io) if you don't have them, and clone this repository from GitHub.
 
 Setup your .env config:
 
@@ -36,13 +36,13 @@ Setup your .env config:
 Install dependencies:
 
 ```sh
-npm install
+pnpm install
 ```
 
 Run the bot using nodemon, auto-restarting on changes to `bot.js`:
 
 ```sh
-npm run dev
+pnpm dev
 ```
 
 The command prompt should say "Logged in as Discord Standup StreakBot". The bot should appear in the server's user list as online. Leave the command prompt open for as long as you want the bot to run.

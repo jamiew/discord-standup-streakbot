@@ -62,25 +62,12 @@ const midWeekDayOfWeek = process.env.MID_WEEK_DAY_OF_WEEK
 
 const channelName = process.env.CHANNEL_NAME || "standups";
 
-let dayStartJob;
 let morningAnnouncementJob;
 let midDayReminderJob;
 let reconnectJob;
 let midweekJob;
 
 const scheduleJobs = () => {
-  if (!dayStartJob) {
-    console.log("Scheduling day start job...");
-    dayStartJob = schedule.scheduleJob(
-      `00 ${dayStartMinute.toString().padStart(2, "0")} ${dayStartHour
-        .toString()
-        .padStart(2, "0")} * * *`,
-      () => {
-        console.log("Starting new day...");
-        broadcastNewDay();
-      }
-    );
-  }
   if (!morningAnnouncementJob) {
     console.log("Scheduling day start job...");
     morningAnnouncementJob = schedule.scheduleJob(
@@ -105,7 +92,7 @@ const scheduleJobs = () => {
         .padStart(2, "0")} * * *`,
       () => {
         console.log("Broadcasing reminder...");
-        broadcastMidDayReminder();
+        broadcastReminder();
       }
     );
   }
@@ -180,12 +167,20 @@ client.on("messageCreate", (message) => {
   if (message.content.startsWith("!")) {
     if (message.content == "!summary") {
       broadcastSummary();
-    } else if (message.content == "!new_day_announcement") {
-      broadcastNewDay();
-    } else if (message.content == "!morning_announcement") {
+    } else if (message.content == "!gm") {
       broadcastMorningAnnouncement();
-    } else if (message.content == "!mid_day_announcement") {
-      broadcastMidDayReminder();
+    } else if (message.content == "!reminder") {
+      broadcastReminder();
+    } else if (message.content == "!help" || message.content == "!debug") {
+      standupChannel().send(`current debug commands:
+!summary
+!gm
+!reminder
+!help
+
+active guild: ${process.env.GUILD_ID}
+active channel: #${channelName}
+      `);
     } else {
       standupChannel().send(
         `sorry, I don't understand the command \`${message.content}\`. please try again.`
@@ -247,29 +242,22 @@ const standupChannel = () => {
   );
 };
 
-const broadcastNewDay = () => {
-  console.log("Start of new day (no announcement in channel)...");
-  const announcement = `wow cool it's the start of a new day`;
-  standupChannel().send(announcement);
-};
-
 const broadcastMorningAnnouncement = () => {
-  console.log("Announcing morning streak...");
-  const announcement =
-    `Good morning and welcome to the ${channelName} channel! Check the pinned messages for a full introduction.\n` +
-    `Let the new day begin! Post your standup to start or continue your daily streak.${getUsersWhoPostedYesterday()}`;
+  console.log("Sending morning announcement...");
+  const announcement = `Let the new day begin! Post your standup to start or continue your daily streak. Check the pinned messages for a full introduction. Standup winners:\n${getUsersWhoPostedYesterday()}`;
   standupChannel().send(announcement);
 };
 
-const broadcastMidDayReminder = () => {
-  console.log("Announcing mid-day reminder...");
-  const announcement = `The day is half done! Don't forget to post an update for the day, even a quick note about what you plan to do tomorrow is good.${getUsersWhoCouldLoseTheirStreak()}`;
+const broadcastReminder = () => {
+  console.log("Sending reminder announcement...");
+  const announcement = `The day is half done! Don't forget to post an update for the day. A quick note about what you plan to do tomorrow is great too. Watchlist:\n${getUsersWhoCouldLoseTheirStreak()}`;
   standupChannel().send(announcement);
 };
 
 const broadcastSummary = () => {
-  console.log("Announcing mid-week summary...");
-  const announcement = `We're halfway through the week! Time for a weekly summary.${getUsersWhoPostedInThePastWeek()}`;
+  console.log("Sending summary...");
+  // const announcement = `We're halfway through the week! Time for a weekly summary.${getUsersWhoPostedInThePastWeek()}`;
+  const announcement = `Summary for this week:\n${getUsersWhoPostedInThePastWeek()}`;
   standupChannel().send(announcement);
 };
 
@@ -342,14 +330,11 @@ const processMessageForStreak = (msg) => {
         msg.author.username
       } (${msg.author.tag}) at ${new Date().toISOString()}`
     );
-    const reply = `howdy partner, it looks like you posted multiple times to the server's #${msg.channel.name} channel today. We'd like to avoid overshadowing daily status updates with other conversations, so we'd appreciate it if you would move this conversation to a thread or another channel. If you want to update your standup, just edit the existing post. thx`;
-    // not everybody can accept DMs
+    const reply = `howdy partner, it looks like you posted multiple times to the server's #${msg.channel.name} channel today. We'd like to avoid overshadowing daily status updates with other conversations, so we'd appreciate it if you would move this conversation to a thread or another channel. If you want to update your standup, just edit the existing post`;
+
+    // not everybody can accept DMs, so post as a public reply
     // msg.author.send(reply)
-    // so just post it publicly
-    msg
-      .reply(reply)
-      .then(() => console.log("replied"))
-      .catch(console.error);
+    msg.reply(reply).catch((e) => console.error("error replying", e));
   }
 };
 

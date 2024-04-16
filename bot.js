@@ -96,13 +96,13 @@ const scheduleJobs = () => {
       }
     );
   }
-  if (!reconnectJob) {
+  /*if (!reconnectJob) {
     console.log("Scheduling reconnect job...");
     reconnectJob = schedule.scheduleJob("00 05 * * * *", () => {
       console.log("Performing scheduled reconnect...");
       disconnect();
     });
-  }
+  }*/
   if (!midweekJob) {
     console.log("Scheduling midweek job...");
     midweekJob = schedule.scheduleJob(

@@ -1,6 +1,4 @@
-require("dotenv").config();
-
-const { Client, GatewayIntentBits } = require("discord.js");
+const { Client, GatewayIntentBits, ChannelType } = require("discord.js");
 const schedule = require("node-schedule");
 const lowdb = require("lowdb");
 const FileSync = require("lowdb/adapters/FileSync");
@@ -8,6 +6,12 @@ const FileSync = require("lowdb/adapters/FileSync");
 const adapter = new FileSync("db.json");
 const db = lowdb(adapter);
 
+// sanity check our required configuration
+require("dotenv").config();
+if (!process.env.GUILD_ID) throw new Error("missing GUILD_ID env var");
+if (!process.env.BOT_TOKEN) throw new Error("missing BOT_TOKEN env var");
+
+// connect to discord
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -17,6 +21,7 @@ const client = new Client({
   ],
 });
 
+// setup our lowdb database
 db.defaults({
   users: [],
 }).write();
@@ -55,7 +60,7 @@ const midWeekDayOfWeek = process.env.MID_WEEK_DAY_OF_WEEK
   ? parseInt(process.env.MID_WEEK_DAY_OF_WEEK)
   : 3;
 
-const channelName = process.env.CHANNEL_NAME ?? "standups";
+const channelName = process.env.CHANNEL_NAME || "standups";
 
 let dayStartJob;
 let morningAnnouncementJob;
@@ -63,10 +68,7 @@ let midDayReminderJob;
 let reconnectJob;
 let midweekJob;
 
-console.log("Starting up...");
-client.on("ready", () => {
-  console.log(`Logged in as ${client.user.tag} - ${new Date().toUTCString()}`);
-
+const scheduleJobs = () => {
   if (!dayStartJob) {
     console.log("Scheduling day start job...");
     dayStartJob = schedule.scheduleJob(
@@ -128,8 +130,16 @@ client.on("ready", () => {
       }
     );
   }
+};
 
-  // broadcastMorningAnnouncement();
+client.on("ready", () => {
+  console.log(`Logged in as ${client.user.tag} - ${new Date().toUTCString()}`);
+
+  debugGuilds();
+  // debugChannels();
+
+  scheduleJobs();
+
   console.log("Client startup complete.");
 });
 
@@ -151,13 +161,40 @@ client.on("messageCreate", (message) => {
     currentChannelType == "dm" ? "DM" : `#${currentChannelName}`;
 
   if (message.author.bot) {
-    console.debug("ignoring message from bot");
+    console.debug("ignoring message from bot", message.author.name);
     return;
+  } else if (message.guildId !== process.env.GUILD_ID) {
+    console.debug("ignoring message from different server than configured", {
+      ourGuildId: process.env.GUILD_ID,
+      messageGuildId: message.guildId,
+    });
   } else if (message.channel.name !== channelName) {
-    console.debug("ignoring message not in our standup channel");
+    console.debug("ignoring message not in our standup channel", {
+      ourChannelName: channelName,
+      messageChannelName: message.channel.name,
+    });
     return;
   }
 
+  // test out various announcements
+  if (message.content.startsWith("!")) {
+    if (message.content == "!summary") {
+      broadcastSummary();
+    } else if (message.content == "!new_day_announcement") {
+      broadcastNewDay();
+    } else if (message.content == "!morning_announcement") {
+      broadcastMorningAnnouncement();
+    } else if (message.content == "!mid_day_announcement") {
+      broadcastMidDayReminder();
+    } else {
+      standupChannel().send(
+        `sorry, I don't understand the command \`${message.content}\`. please try again.`
+      );
+    }
+    return;
+  }
+
+  // lastly,
   console.log(`Processing message received from ${message.author.username}`);
   processMessageForStreak(message);
 });
@@ -180,35 +217,60 @@ const disconnect = async () => {
 const connect = async () => {
   console.log("Connecting...");
   await client.login(process.env.BOT_TOKEN);
-  console.log("Successfully connected.");
+};
+
+const debugGuilds = () => {
+  console.log(
+    "debugGuilds",
+    client.guilds.cache.map((guild) => [guild.id, guild.name])
+  );
+};
+
+const debugChannels = () => {
+  console.log(
+    "debugChannels",
+    client.channels.cache.map((channel) => [
+      channel.guildId,
+      channel.id,
+      channel.name,
+      channel.type,
+    ])
+  );
+};
+
+const standupChannel = () => {
+  return client.channels.cache.find(
+    (c) =>
+      c.guildId == process.env.GUILD_ID &&
+      c.name === channelName &&
+      c.type === ChannelType.GuildText
+  );
 };
 
 const broadcastNewDay = () => {
-  const channel = client.channels.find((c) => c.name === channelName);
   console.log("Start of new day (no announcement in channel)...");
+  const announcement = `wow cool it's the start of a new day`;
+  standupChannel().send(announcement);
 };
 
-broadcastMorningAnnouncement = () => {
-  const channel = client.channels.find((c) => c.name === channelName);
+const broadcastMorningAnnouncement = () => {
   console.log("Announcing morning streak...");
   const announcement =
     `Good morning and welcome to the ${channelName} channel! Check the pinned messages for a full introduction.\n` +
     `Let the new day begin! Post your standup to start or continue your daily streak.${getUsersWhoPostedYesterday()}`;
-  channel.send(announcement);
+  standupChannel().send(announcement);
 };
 
 const broadcastMidDayReminder = () => {
-  const channel = client.channels.find((c) => c.name === channelName);
   console.log("Announcing mid-day reminder...");
   const announcement = `The day is half done! Don't forget to post an update for the day, even a quick note about what you plan to do tomorrow is good.${getUsersWhoCouldLoseTheirStreak()}`;
-  channel.send(announcement);
+  standupChannel().send(announcement);
 };
 
 const broadcastSummary = () => {
-  const channel = client.channels.find((c) => c.name === channelName);
   console.log("Announcing mid-week summary...");
   const announcement = `We're halfway through the week! Time for a weekly summary.${getUsersWhoPostedInThePastWeek()}`;
-  channel.send(announcement);
+  standupChannel().send(announcement);
 };
 
 const getUsersWhoPostedYesterday = () => {
@@ -222,7 +284,7 @@ const getUsersWhoPostedYesterday = () => {
     activeStreakUsers.forEach((user) => {
       // client.users.find can return null if the user hasn't been cached by the client yet.
       const username = user.mentionsEnabled
-        ? client.users.find((u) => u.id === user.userID) ?? user.username
+        ? client.users.find((u) => u.id === user.userID) || user.username
         : user.username;
       listText += `\n\t${username}: ${user.streak} (best: ${user.bestStreak})`;
     });
@@ -242,7 +304,7 @@ const getUsersWhoCouldLoseTheirStreak = () => {
     atRiskUsers.forEach((user) => {
       // client.users.find can return null if the user hasn't been cached by the client yet.
       const username = user.mentionsEnabled
-        ? client.users.find((u) => u.id === user.userID) ?? user.username
+        ? client.users.find((u) => u.id === user.userID) || user.username
         : user.username;
       listText += `\n\t${username}: ${user.streak} (best: ${user.bestStreak})`;
     });
@@ -281,7 +343,7 @@ const processMessageForStreak = (msg) => {
       } (${msg.author.tag}) at ${new Date().toISOString()}`
     );
     msg.author.send(
-      `Hey there! It looks like you've posted multiple times to the server's ${msg.channel.name} channel today. We'd like to avoid overshadowing anyone's daily status update with other conversations, so we'd appreciate it if you would move this conversation to a thread or another channel. If you want to update your standup, just edit the existing post. Thanks!`
+      `howdy partner, it looks like you posted multiple times to the server's #${msg.channel.name} channel today. We'd like to avoid overshadowing anyone's daily status update with other conversations, so we'd appreciate it if you would move this conversation to a thread or another channel. If you want to update your standup, just edit the existing post. Thanks!`
     );
   }
 };

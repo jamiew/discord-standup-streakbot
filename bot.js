@@ -271,9 +271,10 @@ const getUsersWhoPostedYesterday = () => {
     listText += "\nCurrent running streaks:";
     activeStreakUsers.forEach((user) => {
       // client.users.find can return null if the user hasn't been cached by the client yet.
-      const username = user.mentionsEnabled
-        ? client.users.find((u) => u.id === user.userID) || user.username
-        : user.username;
+      // const username = user.mentionsEnabled
+      //   ? client.users.find((u) => u.id === user.userID) || user.username
+      //   : user.username;
+      const username = user.username;
       listText += `\n\t${username}: ${user.streak} (best: ${user.bestStreak})`;
     });
   }
@@ -291,9 +292,10 @@ const getUsersWhoCouldLoseTheirStreak = () => {
       "\nThese users still need to post today if they want to keep their current streak alive:";
     atRiskUsers.forEach((user) => {
       // client.users.find can return null if the user hasn't been cached by the client yet.
-      const username = user.mentionsEnabled
-        ? client.users.find((u) => u.id === user.userID) || user.username
-        : user.username;
+      // const username = user.mentionsEnabled
+      //   ? client.users.find((u) => u.id === user.userID) || user.username
+      //   : user.username;
+      const username = user.username;
       listText += `\n\t${username}: ${user.streak} (best: ${user.bestStreak})`;
     });
   }

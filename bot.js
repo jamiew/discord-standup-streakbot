@@ -148,7 +148,7 @@ client.on("messageCreate", (message) => {
     currentChannelType == "dm" ? "DM" : `#${currentChannelName}`;
 
   if (message.author.bot) {
-    console.debug("ignoring message from bot", message.author.name);
+    // console.debug("ignoring message from bot", message.author.name);
     return;
   } else if (message.guildId !== process.env.GUILD_ID) {
     console.debug("ignoring message from different server than configured", {
@@ -369,9 +369,9 @@ const userStreakNotAlreadyUpdatedToday = (user) => {
   }
   const mostRecentDayStart = getMostRecentDayStart();
   const userLastUpdate = new Date(user.lastUpdate);
-  console.log(
-    `\tMost recent day start: ${mostRecentDayStart.toUTCString()}, user last update: ${userLastUpdate.toUTCString()}`
-  );
+  // console.log(
+  //   `\tMost recent day start: ${mostRecentDayStart.toUTCString()}, user last update: ${userLastUpdate.toUTCString()}`
+  // );
   return userLastUpdate < mostRecentDayStart;
 };
 
@@ -413,9 +413,9 @@ const userStreakUpdatedInPastWeek = (user) => {
 const getMostRecentDayStart = () => {
   console.log("getMostRecentDayStart()");
   const now = new Date(Date.now());
-  console.log(
-    `current time is ${now.toUTCString()}; day starts at ${dayStartHour}:${dayStartMinute}`
-  );
+  // console.log(
+  //   `current time is ${now.toUTCString()}; day starts at ${dayStartHour}:${dayStartMinute}`
+  // );
   const mostRecentDayStart = now;
   if (
     mostRecentDayStart.getHours() < dayStartHour ||

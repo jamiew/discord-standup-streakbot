@@ -244,13 +244,13 @@ const standupChannel = () => {
 
 const broadcastMorningAnnouncement = () => {
   console.log("Sending morning announcement...");
-  const announcement = `Let the new day begin! Post your standup to start or continue your daily streak. Check the pinned messages for a full introduction. Standup winners:\n${getUsersWhoPostedYesterday()}`;
+  const announcement = `Let the new day begin! Post your standup to start or continue your daily streak. Check the pinned messages for a full introduction. ${getUsersWhoPostedYesterday()}`;
   standupChannel().send(announcement);
 };
 
 const broadcastReminder = () => {
   console.log("Sending reminder announcement...");
-  const announcement = `The day is half done! Don't forget to post an update for the day. A quick note about what you plan to do tomorrow is great too. Watchlist:\n${getUsersWhoCouldLoseTheirStreak()}`;
+  const announcement = `The day is half done! Don't forget to post an update for the day. A quick note about what you plan to do tomorrow is great too. ${getUsersWhoCouldLoseTheirStreak()}`;
   standupChannel().send(announcement);
 };
 

@@ -153,15 +153,20 @@ client.on("messageCreate", (message) => {
     // console.debug("ignoring message from bot", message.author.name);
     return;
   } else if (message.guildId !== process.env.GUILD_ID) {
+    /*
     console.debug("ignoring message from different server than configured", {
       ourGuildId: process.env.GUILD_ID,
       messageGuildId: message.guildId,
     });
+    */
+    return;
   } else if (message.channel.name !== channelName) {
+    /*
     console.debug("ignoring message not in our standup channel", {
       ourChannelName: channelName,
       messageChannelName: message.channel.name,
     });
+    */
     return;
   }
 

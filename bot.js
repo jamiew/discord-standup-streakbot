@@ -82,6 +82,7 @@ const scheduleJobs = () => {
       }
     );
   }
+  /*
   if (!midDayReminderJob) {
     console.log("Scheduling reminder job...");
     midDayReminderJob = schedule.scheduleJob(
@@ -96,6 +97,7 @@ const scheduleJobs = () => {
       }
     );
   }
+  */
   /*if (!reconnectJob) {
     console.log("Scheduling reconnect job...");
     reconnectJob = schedule.scheduleJob("00 05 * * * *", () => {

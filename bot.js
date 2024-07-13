@@ -67,6 +67,11 @@ let midDayReminderJob;
 let reconnectJob;
 let midweekJob;
 
+const isWeekday = (date) => {
+  const day = date.getDay();
+  return day >= 1 && day <= 5; // Monday is 1, Friday is 5
+};
+
 const scheduleJobs = () => {
   if (!morningAnnouncementJob) {
     console.log("Scheduling day start job...");
@@ -75,36 +80,14 @@ const scheduleJobs = () => {
         .toString()
         .padStart(2, "0")} ${morningAnnouncementHour
         .toString()
-        .padStart(2, "0")} * * *`,
+        .padStart(2, "0")} * * 1-5`, // Monday to Friday
       () => {
         console.log("Broadcasting morning announcement...");
         broadcastMorningAnnouncement();
       }
     );
   }
-  /*
-  if (!midDayReminderJob) {
-    console.log("Scheduling reminder job...");
-    midDayReminderJob = schedule.scheduleJob(
-      `00 ${midDayReminderMinute
-        .toString()
-        .padStart(2, "0")} ${midDayReminderHour
-        .toString()
-        .padStart(2, "0")} * * *`,
-      () => {
-        console.log("Broadcasing reminder...");
-        broadcastReminder();
-      }
-    );
-  }
-  */
-  /*if (!reconnectJob) {
-    console.log("Scheduling reconnect job...");
-    reconnectJob = schedule.scheduleJob("00 05 * * * *", () => {
-      console.log("Performing scheduled reconnect...");
-      disconnect();
-    });
-  }*/
+
   if (!midweekJob) {
     console.log("Scheduling midweek job...");
     midweekJob = schedule.scheduleJob(
@@ -114,8 +97,10 @@ const scheduleJobs = () => {
         .toString()
         .padStart(2, "0")} * * ${midWeekDayOfWeek}`,
       () => {
-        console.log("Broadcasing midweek summary...");
-        broadcastSummary();
+        if (isWeekday(new Date())) {
+          console.log("Broadcasting midweek summary...");
+          broadcastSummary();
+        }
       }
     );
   }
@@ -203,12 +188,22 @@ active channel: #${channelName}
 
 const disconnectCleanup = () => {
   console.log("Cleaning up after disconnect...");
-  dayStartJob.cancel();
-  dayStartJob = null;
-  midDayReminderJob.cancel();
-  midDayReminderJob = null;
-  reconnectJob.cancel();
-  reconnectJob = null;
+  if (morningAnnouncementJob) {
+    morningAnnouncementJob.cancel();
+    morningAnnouncementJob = null;
+  }
+  if (midDayReminderJob) {
+    midDayReminderJob.cancel();
+    midDayReminderJob = null;
+  }
+  if (reconnectJob) {
+    reconnectJob.cancel();
+    reconnectJob = null;
+  }
+  if (midweekJob) {
+    midweekJob.cancel();
+    midweekJob = null;
+  }
 };
 
 const disconnect = async () => {
@@ -263,7 +258,6 @@ const broadcastReminder = () => {
 
 const broadcastSummary = () => {
   console.log("Sending summary...");
-  // const announcement = `We're halfway through the week! Time for a weekly summary.${getUsersWhoPostedInThePastWeek()}`;
   const announcement = `Summary for this week:\n${getUsersWhoPostedInThePastWeek()}`;
   standupChannel().send(announcement);
 };
@@ -272,15 +266,10 @@ const getUsersWhoPostedYesterday = () => {
   console.log("getUsersWhoPostedYesterday()");
   let listText = "";
   const users = db.get("users").value();
-  //console.log(`users: ${JSON.stringify(users)}`);
-  const activeStreakUsers = users.filter(userStreakLastUpdatedYesterday);
+  const activeStreakUsers = users.filter(userStreakLastUpdatedLastWeekday);
   if (activeStreakUsers.length > 0) {
     listText += "\nCurrent running streaks:";
     activeStreakUsers.forEach((user) => {
-      // client.users.find can return null if the user hasn't been cached by the client yet.
-      // const username = user.mentionsEnabled
-      //   ? client.users.find((u) => u.id === user.userID) || user.username
-      //   : user.username;
       const username = user.username;
       listText += `\n\t${username}: ${user.streak} (best: ${user.bestStreak})`;
     });
@@ -292,16 +281,11 @@ const getUsersWhoCouldLoseTheirStreak = () => {
   console.log("getUsersWhoCouldLoseTheirStreak()");
   let listText = "";
   const users = db.get("users").value();
-  //console.log(`users: ${JSON.stringify(users)}`);
   const atRiskUsers = users.filter(userStreakStillNeedsUpdatingToday);
   if (atRiskUsers.length > 0) {
     listText +=
       "\nThese users still need to post today if they want to keep their current streak alive:";
     atRiskUsers.forEach((user) => {
-      // client.users.find can return null if the user hasn't been cached by the client yet.
-      // const username = user.mentionsEnabled
-      //   ? client.users.find((u) => u.id === user.userID) || user.username
-      //   : user.username;
       const username = user.username;
       listText += `\n\t${username}: ${user.streak} (best: ${user.bestStreak})`;
     });
@@ -313,7 +297,6 @@ const getUsersWhoPostedInThePastWeek = () => {
   console.log("getUsersWhoPostedInThePastWeek()");
   let listText = "";
   const users = db.get("users").value();
-  //console.log(`users: ${JSON.stringify(users)}`);
   const pastWeekUsers = users.filter(userStreakUpdatedInPastWeek);
   if (pastWeekUsers.length > 0) {
     listText += "\nUsers who have posted in the past week:";
@@ -342,7 +325,6 @@ const processMessageForStreak = (msg) => {
     const reply = `howdy partner, it looks like you posted multiple times to the server's #${msg.channel.name} channel today. We'd like to avoid overshadowing daily status updates with other conversations, so we'd appreciate it if you would move this conversation to a thread or another channel. If you want to update your standup, just edit the existing post`;
 
     // not everybody can accept DMs, so post as a public reply
-    // msg.author.send(reply)
     msg.reply(reply).catch((e) => console.error("error replying", e));
   }
 };
@@ -374,39 +356,38 @@ const userStreakNotAlreadyUpdatedToday = (user) => {
     console.log("\tThis user is starting their first streak");
     return true;
   }
-  const mostRecentDayStart = getMostRecentDayStart();
+  const mostRecentWeekdayStart = getMostRecentWeekdayStart();
   const userLastUpdate = new Date(user.lastUpdate);
-  // console.log(
-  //   `\tMost recent day start: ${mostRecentDayStart.toUTCString()}, user last update: ${userLastUpdate.toUTCString()}`
-  // );
-  return userLastUpdate < mostRecentDayStart;
+  return userLastUpdate < mostRecentWeekdayStart;
 };
 
-const userStreakLastUpdatedYesterday = (user) => {
-  console.log(`userStreakLastUpdatedYesterday(${user.username})`);
+const userStreakLastUpdatedLastWeekday = (user) => {
+  console.log(`userStreakLastUpdatedLastWeekday(${user.username})`);
   if (!user.lastUpdate) {
     console.log("\tUser's first streak! No last update date.");
     return false;
   }
-  const mostRecentDayStart = getMostRecentDayStart();
+  const mostRecentWeekdayStart = getMostRecentWeekdayStart();
   const userLastUpdate = new Date(user.lastUpdate);
-  const timeBeforeDayStart =
-    mostRecentDayStart.getTime() - userLastUpdate.getTime();
-  console.log(`\tMost recent day start: ${mostRecentDayStart.toUTCString()};`);
+  const timeBeforeWeekdayStart =
+    mostRecentWeekdayStart.getTime() - userLastUpdate.getTime();
+  console.log(
+    `\tMost recent weekday start: ${mostRecentWeekdayStart.toUTCString()};`
+  );
   console.log(`\tuser last update: ${userLastUpdate.toUTCString()};`);
   console.log(
-    `\ttime between last update and most recent day start: ${timeBeforeDayStart};`
+    `\ttime between last update and most recent weekday start: ${timeBeforeWeekdayStart};`
   );
   console.log(`\tOne day is ${ONE_DAY};`);
-  const didLastUpdateYesterday =
-    timeBeforeDayStart > 0 && timeBeforeDayStart < ONE_DAY;
-  console.log(`\tResult: ${didLastUpdateYesterday}`);
-  return didLastUpdateYesterday;
+  const didLastUpdateLastWeekday =
+    timeBeforeWeekdayStart > 0 && timeBeforeWeekdayStart <= 3 * ONE_DAY; // Allow for weekend gap
+  console.log(`\tResult: ${didLastUpdateLastWeekday}`);
+  return didLastUpdateLastWeekday;
 };
 
 const userStreakStillNeedsUpdatingToday = (user) => {
   return (
-    userStreakLastUpdatedYesterday(user) &&
+    userStreakLastUpdatedLastWeekday(user) &&
     userStreakNotAlreadyUpdatedToday(user)
   );
 };
@@ -414,30 +395,37 @@ const userStreakStillNeedsUpdatingToday = (user) => {
 const userStreakUpdatedInPastWeek = (user) => {
   const userLastUpdate = new Date(user.lastUpdate);
   const timeSinceLastUpdate = new Date() - userLastUpdate;
-  return timeSinceLastUpdate < 7 * ONE_DAY;
+  return timeSinceLastUpdate < 7 * ONE_DAY && isWeekday(userLastUpdate);
 };
 
-const getMostRecentDayStart = () => {
-  console.log("getMostRecentDayStart()");
-  const now = new Date(Date.now());
-  // console.log(
-  //   `current time is ${now.toUTCString()}; day starts at ${dayStartHour}:${dayStartMinute}`
-  // );
-  const mostRecentDayStart = now;
+const getMostRecentWeekdayStart = () => {
+  console.log("getMostRecentWeekdayStart()");
+  let mostRecentWeekdayStart = new Date();
+
+  // Adjust for the current day's start time
   if (
-    mostRecentDayStart.getHours() < dayStartHour ||
-    (mostRecentDayStart.getHours() == dayStartHour &&
-      mostRecentDayStart.getMinutes() < dayStartMinute)
+    mostRecentWeekdayStart.getHours() < dayStartHour ||
+    (mostRecentWeekdayStart.getHours() == dayStartHour &&
+      mostRecentWeekdayStart.getMinutes() < dayStartMinute)
   ) {
-    // It's the next calendar day, but the streak day hasn't started yet, so subtract 24h to get the correct date
-    console.log("\tAdjusting for the wee hours...");
-    mostRecentDayStart.setDate(mostRecentDayStart.getDate() - 1);
+    mostRecentWeekdayStart.setDate(mostRecentWeekdayStart.getDate() - 1);
   }
-  mostRecentDayStart.setHours(dayStartHour, dayStartMinute, 0, 0);
-  return mostRecentDayStart;
+
+  // Find the most recent weekday
+  while (!isWeekday(mostRecentWeekdayStart)) {
+    mostRecentWeekdayStart.setDate(mostRecentWeekdayStart.getDate() - 1);
+  }
+
+  mostRecentWeekdayStart.setHours(dayStartHour, dayStartMinute, 0, 0);
+  return mostRecentWeekdayStart;
 };
 
 const addToStreak = (msg, dbUser) => {
+  if (!isWeekday(new Date())) {
+    console.log("Ignoring weekend post for streak counting");
+    return;
+  }
+
   const streakData = {
     streak: 1,
     bestStreak: 1,
@@ -451,7 +439,7 @@ const addToStreak = (msg, dbUser) => {
   if (!user.bestStreak) {
     console.log(`${msg.author.username} started their first streak`);
     isNewStreak = true;
-  } else if (!userStreakLastUpdatedYesterday(user)) {
+  } else if (!userStreakLastUpdatedLastWeekday(user)) {
     console.log(`${msg.author.username} started a new streak`);
     isNewStreak = true;
     streakData.bestStreak = user.bestStreak;

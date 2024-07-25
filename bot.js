@@ -258,7 +258,7 @@ const broadcastReminder = () => {
 
 const broadcastSummary = () => {
   console.log("Sending summary...");
-  const announcement = `Summary for this week:\n${getUsersWhoPostedInThePastWeek()}`;
+  const announcement = getUsersWhoPostedInThePastWeek();
   standupChannel().send(announcement);
 };
 
@@ -299,11 +299,14 @@ const getUsersWhoPostedInThePastWeek = () => {
   const users = db.get("users").value();
   const pastWeekUsers = users.filter(userStreakUpdatedInPastWeek);
   if (pastWeekUsers.length > 0) {
-    listText += "\nUsers who have posted in the past week:";
+    // Sort users by best streak in descending order
+    pastWeekUsers.sort((a, b) => b.bestStreak - a.bestStreak);
+
+    listText += "\nUsers who have posted in the past week:\n";
     pastWeekUsers.forEach((user) => {
       listText += `\n\t${user.username} (best streak: ${user.bestStreak})`;
     });
-    listText += "\nKeep up the good work!";
+    listText += "\n\nKeep up the good work!";
   } else {
     listText =
       "\nNo users have posted in the past week! I'll have an existential meltdown now.";

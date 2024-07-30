@@ -246,13 +246,19 @@ const standupChannel = () => {
 
 const broadcastMorningAnnouncement = () => {
   console.log("Sending morning announcement...");
-  const announcement = `Let the new day begin! Post your standup to start or continue your daily streak. Check the pinned messages for a full introduction. ${getUsersWhoPostedYesterday()}`;
+  let announcement =
+    "Let the new day begin! Post your standup to start or continue your daily streak. Check the pinned messages for a full explanation.";
+  announcement += "\n\n";
+  announcement += getUsersWhoPostedYesterday();
   standupChannel().send(announcement);
 };
 
 const broadcastReminder = () => {
   console.log("Sending reminder announcement...");
-  const announcement = `The day is half done! Don't forget to post an update for the day. A quick note about what you plan to do tomorrow is great too. ${getUsersWhoCouldLoseTheirStreak()}`;
+  let announcement =
+    "The day is half done! Don't forget to post an update if you haven't. A quick note about what you plan to do tomorrow is great too.";
+  announcement += "\n\n";
+  announcement += getUsersWhoCouldLoseTheirStreak();
   standupChannel().send(announcement);
 };
 
@@ -267,13 +273,17 @@ const getUsersWhoPostedYesterday = () => {
   let listText = "";
   const users = db.get("users").value();
   const activeStreakUsers = users.filter(userStreakLastUpdatedLastWeekday);
+
   if (activeStreakUsers.length > 0) {
-    listText += "\nCurrent running streaks:";
-    activeStreakUsers.forEach((user) => {
-      const username = user.username;
-      listText += `\n\t${username}: ${user.streak} (best: ${user.bestStreak})`;
-    });
+    listText += "Current running streaks:";
+    activeStreakUsers
+      .sort((a, b) => b.streak - a.streak)
+      .forEach((user) => {
+        const username = user.username;
+        listText += `\n\t${username}: ${user.streak} (best: ${user.bestStreak})`;
+      });
   }
+
   return listText;
 };
 
@@ -302,7 +312,7 @@ const getUsersWhoPostedInThePastWeek = () => {
     // Sort users by best streak in descending order
     pastWeekUsers.sort((a, b) => b.bestStreak - a.bestStreak);
 
-    listText += "\nUsers who have posted in the past week:\n";
+    listText += "Users who have posted in the past week:\n";
     pastWeekUsers.forEach((user) => {
       listText += `\n\t${user.username} (best streak: ${user.bestStreak})`;
     });

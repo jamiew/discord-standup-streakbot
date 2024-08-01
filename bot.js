@@ -275,7 +275,7 @@ const getUsersWhoPostedYesterday = () => {
   const activeStreakUsers = users.filter(userStreakLastUpdatedLastWeekday);
 
   if (activeStreakUsers.length > 0) {
-    listText += "Current running streaks:";
+    listText += "Current running streaks:\n";
     activeStreakUsers
       .sort((a, b) => b.streak - a.streak)
       .forEach((user) => {

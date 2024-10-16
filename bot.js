@@ -129,29 +129,27 @@ client.on("disconnect", async (msg, code) => {
 });
 
 client.on("messageCreate", (message) => {
-  // const currentChannelName = message.channel.name;
-  // const currentChannelType = message.channel.type;
-  // const channelDebug =
-  //   currentChannelType == "dm" ? "DM" : `#${currentChannelName}`;
-
   if (message.author.bot) {
-    // console.debug("ignoring message from bot", message.author.name);
+    console.debug("ignoring message from bot", {
+      username: message.author.username,
+      content: message.content,
+    });
     return;
   } else if (message.guildId !== process.env.GUILD_ID) {
-    /*
     console.debug("ignoring message from different server than configured", {
       ourGuildId: process.env.GUILD_ID,
       messageGuildId: message.guildId,
     });
-    */
     return;
   } else if (message.channel.name !== channelName) {
-    /*
     console.debug("ignoring message not in our standup channel", {
       ourChannelName: channelName,
       messageChannelName: message.channel.name,
     });
-    */
+    return;
+  } else if (message.channel.isThread()) {
+    // Ignore messages in threads
+    console.log(`Ignoring message in thread: ${message.channel.name}`);
     return;
   }
 

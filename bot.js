@@ -1,15 +1,17 @@
 const { Client, GatewayIntentBits, ChannelType } = require("discord.js");
 const schedule = require("node-schedule");
-const lowdb = require("lowdb");
-const FileSync = require("lowdb/adapters/FileSync");
-
-const adapter = new FileSync("db.json");
-const db = lowdb(adapter);
-
-// sanity check our required configuration
-require("dotenv").config();
-if (!process.env.GUILD_ID) throw new Error("missing GUILD_ID env var");
-if (!process.env.BOT_TOKEN) throw new Error("missing BOT_TOKEN env var");
+const config = require("./config");
+const db = require("./database");
+const { isWeekday } = require("./utils");
+const {
+  addToStreak,
+  userStreakNotAlreadyUpdatedToday,
+} = require("./streakManager");
+const {
+  broadcastMorningAnnouncement,
+  broadcastReminder,
+  broadcastSummary,
+} = require("./announcements");
 
 // connect to discord
 const client = new Client({
@@ -21,69 +23,25 @@ const client = new Client({
   ],
 });
 
-// setup our lowdb database
-db.defaults({
-  users: [],
-}).write();
-
-const ONE_DAY = new Date(1000 * 60 * 60 * 24);
-
-const dayStartHour = process.env.DAY_START_HOUR
-  ? parseInt(process.env.DAY_START_HOUR)
-  : 0;
-const dayStartMinute = process.env.DAY_START_MINUTE
-  ? parseInt(process.env.DAY_START_MINUTE)
-  : 0;
-
-const morningAnnouncementHour = process.env.MORNING_ANNOUNCEMENT_HOUR
-  ? parseInt(process.env.MORNING_ANNOUNCEMENT_HOUR)
-  : 7;
-const morningAnnouncementMinute = process.env.MORNING_ANNOUNCEMENT_MINUTE
-  ? parseInt(process.env.MORNING_ANNOUNCEMENT_MINUTE)
-  : 0;
-
-// const midDayReminderHour = process.env.MID_DAY_REMINDER_HOUR
-//   ? parseInt(process.env.MID_DAY_REMINDER_HOUR)
-//   : 12;
-// const midDayReminderMinute = process.env.MID_DAY_REMINDER_MINUTE
-//   ? parseInt(process.env.MID_DAY_REMINDER_MINUTE)
-//   : 0;
-
-const midWeekSummaryHour = process.env.MID_WEEK_SUMMARY_HOUR
-  ? parseInt(process.env.MID_WEEK_SUMMARY_HOUR)
-  : 13;
-const midWeekSummaryMinute = process.env.MID_WEEK_SUMMARY_MINUTE
-  ? parseInt(process.env.MID_WEEK_SUMMARY_MINUTE)
-  : 0;
-
-const midWeekDayOfWeek = process.env.MID_WEEK_DAY_OF_WEEK
-  ? parseInt(process.env.MID_WEEK_DAY_OF_WEEK)
-  : 3;
-
-const channelName = process.env.CHANNEL_NAME || "standups";
-
 let morningAnnouncementJob;
 let midDayReminderJob;
 let reconnectJob;
 let midweekJob;
 
-const isWeekday = (date) => {
-  const day = date.getDay();
-  return day >= 1 && day <= 5; // Monday is 1, Friday is 5
-};
-
 const scheduleJobs = () => {
   if (!morningAnnouncementJob) {
     console.log("Scheduling day start job...");
     morningAnnouncementJob = schedule.scheduleJob(
-      `00 ${morningAnnouncementMinute
-        .toString()
-        .padStart(2, "0")} ${morningAnnouncementHour
-        .toString()
-        .padStart(2, "0")} * * 1-5`, // Monday to Friday
+      `00 ${config.MORNING_ANNOUNCEMENT_MINUTE.toString().padStart(
+        2,
+        "0"
+      )} ${config.MORNING_ANNOUNCEMENT_HOUR.toString().padStart(
+        2,
+        "0"
+      )} * * 1-5`, // Monday to Friday
       () => {
         console.log("Broadcasting morning announcement...");
-        broadcastMorningAnnouncement();
+        broadcastMorningAnnouncement(standupChannel());
       }
     );
   }
@@ -91,15 +49,16 @@ const scheduleJobs = () => {
   if (!midweekJob) {
     console.log("Scheduling midweek job...");
     midweekJob = schedule.scheduleJob(
-      `00 ${midWeekSummaryMinute
-        .toString()
-        .padStart(2, "0")} ${midWeekSummaryHour
-        .toString()
-        .padStart(2, "0")} * * ${midWeekDayOfWeek}`,
+      `00 ${config.MID_WEEK_SUMMARY_MINUTE.toString().padStart(
+        2,
+        "0"
+      )} ${config.MID_WEEK_SUMMARY_HOUR.toString().padStart(2, "0")} * * ${
+        config.MID_WEEK_DAY_OF_WEEK
+      }`,
       () => {
         if (isWeekday(new Date())) {
           console.log("Broadcasting midweek summary...");
-          broadcastSummary();
+          broadcastSummary(standupChannel());
         }
       }
     );
@@ -130,22 +89,10 @@ client.on("disconnect", async (msg, code) => {
 
 client.on("messageCreate", (message) => {
   if (message.author.bot) {
-    console.debug("ignoring message from bot", {
-      username: message.author.username,
-      content: message.content,
-    });
     return;
-  } else if (message.guildId !== process.env.GUILD_ID) {
-    console.debug("ignoring message from different server than configured", {
-      ourGuildId: process.env.GUILD_ID,
-      messageGuildId: message.guildId,
-    });
+  } else if (message.guildId !== config.GUILD_ID) {
     return;
-  } else if (message.channel.name !== channelName) {
-    console.debug("ignoring message not in our standup channel", {
-      ourChannelName: channelName,
-      messageChannelName: message.channel.name,
-    });
+  } else if (message.channel.name !== config.CHANNEL_NAME) {
     return;
   } else if (message.channel.isThread()) {
     // Ignore messages in threads
@@ -156,11 +103,11 @@ client.on("messageCreate", (message) => {
   // test out various announcements
   if (message.content.startsWith("!")) {
     if (message.content == "!summary") {
-      broadcastSummary();
+      broadcastSummary(standupChannel());
     } else if (message.content == "!gm") {
-      broadcastMorningAnnouncement();
+      broadcastMorningAnnouncement(standupChannel());
     } else if (message.content == "!reminder") {
-      broadcastReminder();
+      broadcastReminder(standupChannel());
     } else if (message.content == "!help" || message.content == "!debug") {
       standupChannel().send(`current debug commands:
 !summary
@@ -168,8 +115,8 @@ client.on("messageCreate", (message) => {
 !reminder
 !help
 
-active guild: ${process.env.GUILD_ID}
-active channel: #${channelName}
+active guild: ${config.GUILD_ID}
+active channel: #${config.CHANNEL_NAME}
       `);
     } else {
       standupChannel().send(
@@ -206,7 +153,7 @@ const disconnectCleanup = () => {
 
 const connect = async () => {
   console.log("Connecting...");
-  await client.login(process.env.BOT_TOKEN);
+  await client.login(config.BOT_TOKEN);
 };
 
 const debugGuilds = () => {
@@ -231,90 +178,10 @@ const debugChannels = () => {
 const standupChannel = () => {
   return client.channels.cache.find(
     (c) =>
-      c.guildId == process.env.GUILD_ID &&
-      c.name === channelName &&
+      c.guildId == config.GUILD_ID &&
+      c.name === config.CHANNEL_NAME &&
       c.type === ChannelType.GuildText
   );
-};
-
-const broadcastMorningAnnouncement = () => {
-  console.log("Sending morning announcement...");
-  let announcement =
-    "Let the new day begin! Post your standup to start or continue your daily streak. Check the pinned messages for a full explanation.";
-  announcement += "\n\n";
-  announcement += getUsersWhoPostedYesterday();
-  standupChannel().send(announcement);
-};
-
-const broadcastReminder = () => {
-  console.log("Sending reminder announcement...");
-  let announcement =
-    "The day is half done! Don't forget to post an update if you haven't. A quick note about what you plan to do tomorrow is great too.";
-  announcement += "\n\n";
-  announcement += getUsersWhoCouldLoseTheirStreak();
-  standupChannel().send(announcement);
-};
-
-const broadcastSummary = () => {
-  console.log("Sending summary...");
-  const announcement = getUsersWhoPostedInThePastWeek();
-  standupChannel().send(announcement);
-};
-
-const getUsersWhoPostedYesterday = () => {
-  console.log("getUsersWhoPostedYesterday()");
-  let listText = "";
-  const users = db.get("users").value();
-  const activeStreakUsers = users.filter(userStreakLastUpdatedLastWeekday);
-
-  if (activeStreakUsers.length > 0) {
-    listText += "Current running streaks:\n";
-    activeStreakUsers
-      .sort((a, b) => b.streak - a.streak)
-      .forEach((user) => {
-        const username = user.username;
-        listText += `\n\t${username}: ${user.streak} (best: ${user.bestStreak})`;
-      });
-  }
-
-  return listText;
-};
-
-const getUsersWhoCouldLoseTheirStreak = () => {
-  console.log("getUsersWhoCouldLoseTheirStreak()");
-  let listText = "";
-  const users = db.get("users").value();
-  const atRiskUsers = users.filter(userStreakStillNeedsUpdatingToday);
-  if (atRiskUsers.length > 0) {
-    listText +=
-      "\nThese users still need to post today if they want to keep their current streak alive:";
-    atRiskUsers.forEach((user) => {
-      const username = user.username;
-      listText += `\n\t${username}: ${user.streak} (best: ${user.bestStreak})`;
-    });
-  }
-  return listText;
-};
-
-const getUsersWhoPostedInThePastWeek = () => {
-  console.log("getUsersWhoPostedInThePastWeek()");
-  let listText = "";
-  const users = db.get("users").value();
-  const pastWeekUsers = users.filter(userStreakUpdatedInPastWeek);
-  if (pastWeekUsers.length > 0) {
-    // Sort users by best streak in descending order
-    pastWeekUsers.sort((a, b) => b.bestStreak - a.bestStreak);
-
-    listText += "Users who have posted in the past week:\n";
-    pastWeekUsers.forEach((user) => {
-      listText += `\n\t${user.username} (best streak: ${user.bestStreak})`;
-    });
-    listText += "\n\nKeep up the good work!";
-  } else {
-    listText =
-      "\nNo users have posted in the past week! I'll have an existential meltdown now.";
-  }
-  return listText;
 };
 
 const processMessageForStreak = (msg) => {
@@ -354,126 +221,6 @@ const getOrCreateDBUser = (msg) => {
     console.log(`New user created: ${JSON.stringify(dbUser.value())}`);
   }
   return dbUser;
-};
-
-const userStreakNotAlreadyUpdatedToday = (user) => {
-  console.log(`userStreakNotAlreadyUpdatedToday(${user.username})`);
-  if (!user.streak) {
-    console.log("\tThis user is starting their first streak");
-    return true;
-  }
-  const mostRecentWeekdayStart = getMostRecentWeekdayStart();
-  const userLastUpdate = new Date(user.lastUpdate);
-  return userLastUpdate < mostRecentWeekdayStart;
-};
-
-const userStreakLastUpdatedLastWeekday = (user) => {
-  console.log(`userStreakLastUpdatedLastWeekday(${user.username})`);
-  if (!user.lastUpdate) {
-    console.log("\tUser's first streak! No last update date.");
-    return false;
-  }
-  const mostRecentWeekdayStart = getMostRecentWeekdayStart();
-  const userLastUpdate = new Date(user.lastUpdate);
-  const timeBeforeWeekdayStart =
-    mostRecentWeekdayStart.getTime() - userLastUpdate.getTime();
-  console.log(
-    `\tMost recent weekday start: ${mostRecentWeekdayStart.toUTCString()};`
-  );
-  console.log(`\tuser last update: ${userLastUpdate.toUTCString()};`);
-  console.log(
-    `\ttime between last update and most recent weekday start: ${timeBeforeWeekdayStart};`
-  );
-  console.log(`\tOne day is ${ONE_DAY};`);
-  const didLastUpdateLastWeekday =
-    timeBeforeWeekdayStart > 0 && timeBeforeWeekdayStart <= 3 * ONE_DAY; // Allow for weekend gap
-  console.log(`\tResult: ${didLastUpdateLastWeekday}`);
-  return didLastUpdateLastWeekday;
-};
-
-const userStreakStillNeedsUpdatingToday = (user) => {
-  return (
-    userStreakLastUpdatedLastWeekday(user) &&
-    userStreakNotAlreadyUpdatedToday(user)
-  );
-};
-
-const userStreakUpdatedInPastWeek = (user) => {
-  const userLastUpdate = new Date(user.lastUpdate);
-  const timeSinceLastUpdate = new Date() - userLastUpdate;
-  return timeSinceLastUpdate < 7 * ONE_DAY && isWeekday(userLastUpdate);
-};
-
-const getMostRecentWeekdayStart = () => {
-  console.log("getMostRecentWeekdayStart()");
-  const mostRecentWeekdayStart = new Date();
-
-  // Adjust for the current day's start time
-  if (
-    mostRecentWeekdayStart.getHours() < dayStartHour ||
-    (mostRecentWeekdayStart.getHours() == dayStartHour &&
-      mostRecentWeekdayStart.getMinutes() < dayStartMinute)
-  ) {
-    mostRecentWeekdayStart.setDate(mostRecentWeekdayStart.getDate() - 1);
-  }
-
-  // Find the most recent weekday
-  while (!isWeekday(mostRecentWeekdayStart)) {
-    mostRecentWeekdayStart.setDate(mostRecentWeekdayStart.getDate() - 1);
-  }
-
-  mostRecentWeekdayStart.setHours(dayStartHour, dayStartMinute, 0, 0);
-  return mostRecentWeekdayStart;
-};
-
-const addToStreak = (msg, dbUser) => {
-  if (!isWeekday(new Date())) {
-    console.log("Ignoring weekend post for streak counting");
-    return;
-  }
-
-  const streakData = {
-    streak: 1,
-    bestStreak: 1,
-    lastUpdate: new Date(),
-  };
-
-  let isNewBest = true;
-  let isNewStreak = false;
-  const user = dbUser.value();
-
-  if (!user.bestStreak) {
-    console.log(`${msg.author.username} started their first streak`);
-    isNewStreak = true;
-  } else if (!userStreakLastUpdatedLastWeekday(user)) {
-    console.log(`${msg.author.username} started a new streak`);
-    isNewStreak = true;
-    streakData.bestStreak = user.bestStreak;
-    isNewBest = false;
-  } else {
-    const newLevel = user.streak + 1;
-    const currentBest = user.bestStreak;
-    streakData.streak = newLevel;
-    streakData.bestStreak = Math.max(newLevel, currentBest);
-    console.log(`${msg.author.username} continued a streak to ${newLevel}`);
-    if (newLevel > currentBest) {
-      console.log(`\t...and it's a new best! (${newLevel})`);
-    } else {
-      isNewBest = false;
-    }
-  }
-
-  if (isNewStreak) {
-    msg.react("☄");
-  }
-
-  if (isNewBest) {
-    msg.react("🌟");
-  } else {
-    msg.react("⭐");
-  }
-
-  dbUser.assign(streakData).write();
 };
 
 async function main() {

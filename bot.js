@@ -42,12 +42,12 @@ const morningAnnouncementMinute = process.env.MORNING_ANNOUNCEMENT_MINUTE
   ? parseInt(process.env.MORNING_ANNOUNCEMENT_MINUTE)
   : 0;
 
-const midDayReminderHour = process.env.MID_DAY_REMINDER_HOUR
-  ? parseInt(process.env.MID_DAY_REMINDER_HOUR)
-  : 12;
-const midDayReminderMinute = process.env.MID_DAY_REMINDER_MINUTE
-  ? parseInt(process.env.MID_DAY_REMINDER_MINUTE)
-  : 0;
+// const midDayReminderHour = process.env.MID_DAY_REMINDER_HOUR
+//   ? parseInt(process.env.MID_DAY_REMINDER_HOUR)
+//   : 12;
+// const midDayReminderMinute = process.env.MID_DAY_REMINDER_MINUTE
+//   ? parseInt(process.env.MID_DAY_REMINDER_MINUTE)
+//   : 0;
 
 const midWeekSummaryHour = process.env.MID_WEEK_SUMMARY_HOUR
   ? parseInt(process.env.MID_WEEK_SUMMARY_HOUR)
@@ -110,7 +110,7 @@ client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag} - ${new Date().toUTCString()}`);
 
   debugGuilds();
-  // debugChannels();
+  debugChannels();
 
   scheduleJobs();
 
@@ -121,18 +121,18 @@ client.on("error", (error) => {
   console.error(error);
 });
 
-client.on("disconnect", (msg, code) => {
+client.on("disconnect", async (msg, code) => {
   if (code === 0) return console.error(msg);
   console.log("Graceful disconnect occurred.");
   disconnectCleanup();
-  connect();
+  await connect();
 });
 
 client.on("messageCreate", (message) => {
-  const currentChannelName = message.channel.name;
-  const currentChannelType = message.channel.type;
-  const channelDebug =
-    currentChannelType == "dm" ? "DM" : `#${currentChannelName}`;
+  // const currentChannelName = message.channel.name;
+  // const currentChannelType = message.channel.type;
+  // const channelDebug =
+  //   currentChannelType == "dm" ? "DM" : `#${currentChannelName}`;
 
   if (message.author.bot) {
     // console.debug("ignoring message from bot", message.author.name);
@@ -204,11 +204,6 @@ const disconnectCleanup = () => {
     midweekJob.cancel();
     midweekJob = null;
   }
-};
-
-const disconnect = async () => {
-  console.log("Disconnecting...");
-  await client.destroy();
 };
 
 const connect = async () => {
@@ -413,7 +408,7 @@ const userStreakUpdatedInPastWeek = (user) => {
 
 const getMostRecentWeekdayStart = () => {
   console.log("getMostRecentWeekdayStart()");
-  let mostRecentWeekdayStart = new Date();
+  const mostRecentWeekdayStart = new Date();
 
   // Adjust for the current day's start time
   if (

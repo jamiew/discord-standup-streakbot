@@ -108,12 +108,8 @@ const scheduleJobs = () => {
 
 client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag} - ${new Date().toUTCString()}`);
-
   debugGuilds();
-  debugChannels();
-
   scheduleJobs();
-
   console.log("Client startup complete.");
 });
 
@@ -213,18 +209,6 @@ const debugGuilds = () => {
   console.log(
     "debugGuilds",
     client.guilds.cache.map((guild) => [guild.id, guild.name])
-  );
-};
-
-const debugChannels = () => {
-  console.log(
-    "debugChannels",
-    client.channels.cache.map((channel) => [
-      channel.guildId,
-      channel.id,
-      channel.name,
-      channel.type,
-    ])
   );
 };
 

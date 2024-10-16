@@ -9,12 +9,12 @@
     "dev": "pnpm dlx nodemon bot.js --watch"
   },
   "dependencies": {
-    "discord.js": "~14",
-    "dotenv": "~16",
-    "lowdb": "~7",
-    "node-schedule": "~2"
+    "discord.js": "~14.16.3",
+    "dotenv": "~16.4.5",
+    "lowdb": "~7.0.1",
+    "node-schedule": "~2.1.1"
   },
   "devDependencies": {
-    "eslint": "~9"
+    "eslint": "~9.12.0"
   }
 }

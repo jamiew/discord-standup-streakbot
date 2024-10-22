@@ -1,4 +1,6 @@
 db.json
+db-*.json
+run-loop.sh
 
 # Logs
 logs

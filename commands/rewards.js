@@ -26,6 +26,6 @@ module.exports = {
     response += "• Use /balance to check your current balance\n";
     response += "• Use /inventory to see your items\n";
 
-    await interaction.reply({ content: response });
+    await interaction.reply({ content: response, ephemeral: true });
   },
 };

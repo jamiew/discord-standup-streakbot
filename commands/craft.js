@@ -31,7 +31,7 @@ module.exports = {
       await interaction.reply({
         content:
           "🎴 You crafted an Unwrapped Collectible Trading Card! Check your /inventory to see it.",
-        ephemeral: true,
+        // ephemeral: true,
       });
     } catch (error) {
       console.error("Error crafting card:", error);

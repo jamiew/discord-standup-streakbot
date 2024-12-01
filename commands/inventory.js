@@ -36,7 +36,7 @@ module.exports = {
           targetUser.id === interaction.user.id
             ? "You don't have any items in your inventory yet!"
             : `${targetUser.username} doesn't have any items in their inventory yet!`;
-        await interaction.reply(message);
+        await interaction.reply({ content: message, ephemeral: true });
         return;
       }
 
@@ -47,7 +47,10 @@ module.exports = {
 
       const itemsList = inventory.map(formatInventoryItem).join("\n\n");
 
-      await interaction.reply(`${header}\n\n${itemsList}`);
+      await interaction.reply({
+        content: `${header}\n\n${itemsList}`,
+        ephemeral: true,
+      });
     } catch (error) {
       console.error("Error getting inventory:", error);
       await interaction.reply({

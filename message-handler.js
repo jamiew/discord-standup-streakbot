@@ -1,26 +1,60 @@
 const { getOrCreateDBUser } = require("./db");
-const { addToStreak, userStreakNotAlreadyUpdatedToday } = require("./streaks");
-const { awardGlifbux } = require("./economy");
+const {
+  addToStreak,
+  userStreakNotAlreadyUpdatedToday,
+  updateLastUpdate,
+} = require("./streaks");
+const { awardGlifbux, getBalance } = require("./economy");
 const { addReactions } = require("./reactions");
 const { calculateGlifbuxReward } = require("./utils");
+const { db } = require("./db");
+
+const findTodayThread = async (channel, userId) => {
+  try {
+    const today = new Date().toLocaleDateString();
+    const threads = await channel.threads.fetch();
+    return threads.threads.find(
+      (thread) => thread.name.includes(today) && thread.ownerId === userId
+    );
+  } catch (error) {
+    console.error("Error finding today's thread:", error);
+    return null;
+  }
+};
 
 const handleDuplicatePost = async (msg, lastUpdate) => {
   console.log(
-    `Duplicate standup post detected from ${
+    `[${new Date().toISOString()}] Duplicate standup detected from ${
       msg.author.username
     } - already posted today at ${new Date(lastUpdate).toISOString()}`
   );
-  const reply = `You've already posted your standup for today. Please edit your existing post if you need to make updates.`;
 
-  await msg
-    .reply({ content: reply, ephemeral: true })
-    .catch((e) => console.error("error replying", e));
+  // Try to find today's thread
+  const existingThread = await findTodayThread(msg.channel, msg.author.id);
+
+  let reply;
+  if (existingThread) {
+    reply = `You've already posted your standup for today. Please continue the conversation in your existing thread: ${existingThread.url}`;
+  } else {
+    reply = `You've already posted your standup for today. Please edit your existing post if you need to make updates.`;
+  }
 
   try {
+    const replyMsg = await msg.reply({ content: reply });
+
+    // Delete the duplicate message
     await msg.delete();
-    console.log(`Deleted duplicate standup post from ${msg.author.username}`);
+
+    // Delete our reply after 30 seconds
+    setTimeout(async () => {
+      try {
+        await replyMsg.delete();
+      } catch (error) {
+        console.error("Error deleting reply message:", error);
+      }
+    }, 30000);
   } catch (error) {
-    console.error("Error deleting duplicate message:", error);
+    console.error("Error handling duplicate post:", error);
   }
 };
 
@@ -39,19 +73,37 @@ const createThreadForPost = async (msg, config, streakCount) => {
     // Then add reactions to the original standup post
     await addReactions(msg, 2);
 
+    // Get fresh user data from database
+    const freshUserData = db
+      .get("users")
+      .find({ userID: msg.author.id })
+      .value();
+
     // Calculate glifbux reward based on streak
     const glifbuxReward = calculateGlifbuxReward(streakCount);
+
+    // Get current balance
+    const currentBalance = await getBalance(msg.author);
 
     // Format streak message
     const streakText =
       streakCount === 1 ? "first day" : `${streakCount} day streak`;
-    const rewardText = `You earned ${glifbuxReward} glifbux for your standup today!`;
+    const lastUpdateDate = new Date(freshUserData.lastUpdate).toLocaleString();
 
-    // Send thread messages
+    // Format reward info
+    const weekNumber = Math.floor((streakCount - 1) / 5) + 1;
+    const rewardInfo = `${glifbuxReward} glifbux (Week ${weekNumber} reward rate)`;
+
+    // Send thread messages with detailed info
     await thread.send(
-      `This thread will automatically archive in 24 hours\n` +
-        `You're on a ${streakText}! 🎉\n` +
-        `${rewardText} 💰`
+      `🕒 This thread will automatically archive in 24 hours\n\n` +
+        `📊 **Streak Status**\n` +
+        `• Current Streak: ${streakText}\n` +
+        `• Last Updated: ${lastUpdateDate}\n\n` +
+        `💰 **Glifbux Info**\n` +
+        `• Reward for this post: ${rewardInfo}\n` +
+        `• Current balance: ${currentBalance} glifbux\n\n` +
+        `Use /rewards to see how rewards increase with streak length!`
     );
 
     // Award glifbux
@@ -78,40 +130,48 @@ const processStandupMessage = async (msg, config) => {
   if (msg.channel.name !== config.channelName) return;
   if (msg.channel.isThread()) return;
 
-  const dbUser = getOrCreateDBUser(msg);
-  const user = dbUser.value();
-
-  console.log(
-    `[${new Date().toISOString()}] Standup post from ${msg.author.username} (${
-      msg.author.id
-    })`
-  );
-  console.log(
-    `Current streak: ${user.streak || 0}, Best streak: ${user.bestStreak || 0}`
-  );
-  console.log(
-    `Last update: ${
-      user.lastUpdate ? new Date(user.lastUpdate).toISOString() : "Never"
-    }`
+  // Check if user has already posted today using fresh database check
+  const canPost = userStreakNotAlreadyUpdatedToday(
+    msg.author.id,
+    config.dayStartHour,
+    config.dayStartMinute
   );
 
-  if (
-    userStreakNotAlreadyUpdatedToday(
-      user,
-      config.dayStartHour,
-      config.dayStartMinute
-    )
-  ) {
+  if (canPost) {
+    // yep
     console.log(
-      `Valid new standup post - processing streak update for ${msg.author.username}`
+      `Validdd new standup post - processing for ${msg.author.username}`
     );
-    addToStreak(msg, dbUser);
 
-    // Get updated streak count after addToStreak
-    const updatedUser = dbUser.value();
-    await createThreadForPost(msg, config, updatedUser.streak || 1);
+    // Get user data and always update lastUpdate
+    const dbUser = getOrCreateDBUser(msg);
+    const lastUpdateSuccess = updateLastUpdate(msg, dbUser);
+
+    if (!lastUpdateSuccess) {
+      console.error(`Failed to update lastUpdate for ${msg.author.username}`);
+      return;
+    }
+
+    // Try to update streak (this will only succeed on valid weekdays)
+    const streakUpdated = addToStreak(msg, dbUser);
+
+    if (streakUpdated) {
+      // Get fresh user data after streak update
+      const updatedUser = db
+        .get("users")
+        .find({ userID: msg.author.id })
+        .value();
+      console.log(`Fresh user data after streak update:`, {
+        streak: updatedUser.streak,
+        lastUpdate: updatedUser.lastUpdate,
+      });
+
+      await createThreadForPost(msg, config, updatedUser.streak || 1);
+    }
   } else {
-    await handleDuplicatePost(msg, user.lastUpdate);
+    // Get fresh user data for duplicate handling
+    const userData = db.get("users").find({ userID: msg.author.id }).value();
+    await handleDuplicatePost(msg, userData.lastUpdate);
   }
 };
 

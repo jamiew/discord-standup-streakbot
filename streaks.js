@@ -5,15 +5,12 @@ const userStreakNotAlreadyUpdatedToday = (
   dayStartHour,
   dayStartMinute
 ) => {
-  if (!user.streak) {
+  if (!user || !user.lastUpdate) {
     return true;
   }
-  const mostRecentWeekdayStart = getMostRecentWeekdayStart(
-    dayStartHour,
-    dayStartMinute
-  );
-  const userLastUpdate = new Date(user.lastUpdate);
-  return userLastUpdate < mostRecentWeekdayStart;
+  const lastUpdate = new Date(user.lastUpdate);
+  const now = new Date();
+  return lastUpdate.toDateString() !== now.toDateString();
 };
 
 const userStreakLastUpdatedLastWeekday = (
@@ -21,7 +18,7 @@ const userStreakLastUpdatedLastWeekday = (
   dayStartHour,
   dayStartMinute
 ) => {
-  if (!user.lastUpdate) {
+  if (!user || !user.lastUpdate) {
     return false;
   }
   const mostRecentWeekdayStart = getMostRecentWeekdayStart(
@@ -48,25 +45,57 @@ const userStreakStillNeedsUpdatingToday = (
 };
 
 const userStreakUpdatedInPastWeek = (user) => {
+  if (!user || !user.lastUpdate) return false;
   const userLastUpdate = new Date(user.lastUpdate);
   const timeSinceLastUpdate = new Date() - userLastUpdate;
   return timeSinceLastUpdate < 7 * ONE_DAY && isWeekday(userLastUpdate);
 };
 
+const updateLastUpdate = (msg, dbUser) => {
+  console.log(`Updating lastUpdate for ${msg.author.username}`);
+  const now = new Date();
+  const updateData = {
+    lastUpdate: now.toISOString(), // Ensure consistent date format
+  };
+
+  // Write to database
+  console.log(`Writing lastUpdate for ${msg.author.username}:`, updateData);
+  dbUser.assign(updateData).write();
+
+  // Verify the update by reading fresh data
+  const verifyUser = dbUser.value();
+  if (!verifyUser) {
+    console.error(
+      `Error: Failed to verify lastUpdate for ${msg.author.username}`
+    );
+    return false;
+  }
+
+  console.log(`Verified lastUpdate for ${msg.author.username}:`, {
+    lastUpdate: verifyUser.lastUpdate,
+  });
+
+  return true;
+};
+
 const addToStreak = (msg, dbUser) => {
   if (!isWeekday(new Date())) {
-    return;
+    return false;
   }
 
   const streakData = {
     streak: 1,
     bestStreak: 1,
-    lastUpdate: new Date(),
   };
 
   let isNewBest = true;
   let isNewStreak = false;
   const user = dbUser.value();
+
+  if (!user) {
+    console.error(`Error: No user data found for ${msg.author.username}`);
+    return false;
+  }
 
   if (!user.bestStreak) {
     console.log(`${msg.author.username} started their first streak`);
@@ -99,7 +128,25 @@ const addToStreak = (msg, dbUser) => {
     msg.react("⭐");
   }
 
+  // Write to database
+  console.log(`Writing streak data for ${msg.author.username}:`, streakData);
   dbUser.assign(streakData).write();
+
+  // Verify the update by reading fresh data
+  const verifyUser = dbUser.value();
+  if (!verifyUser) {
+    console.error(
+      `Error: Failed to verify streak update for ${msg.author.username}`
+    );
+    return false;
+  }
+
+  console.log(`Verified streak update for ${msg.author.username}:`, {
+    streak: verifyUser.streak,
+    bestStreak: verifyUser.bestStreak,
+  });
+
+  return true;
 };
 
 module.exports = {
@@ -107,5 +154,6 @@ module.exports = {
   userStreakLastUpdatedLastWeekday,
   userStreakStillNeedsUpdatingToday,
   userStreakUpdatedInPastWeek,
+  updateLastUpdate,
   addToStreak,
 };

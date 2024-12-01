@@ -9,12 +9,17 @@ const { addReactions } = require("./reactions");
 const { calculateGlifbuxReward } = require("./utils");
 const { db } = require("./db");
 
-const findTodayThread = async (channel, userId) => {
+const generateThreadName = (username, date) => {
+  return `${username}'s standup ${date.toLocaleDateString()}`;
+};
+
+const findTodayThread = async (channel, userId, username) => {
   try {
-    const today = new Date().toLocaleDateString();
+    const expectedThreadName = generateThreadName(username, new Date());
     const threads = await channel.threads.fetch();
     return threads.threads.find(
-      (thread) => thread.name.includes(today) && thread.ownerId === userId
+      (thread) =>
+        thread.name === expectedThreadName && thread.ownerId === userId
     );
   } catch (error) {
     console.error("Error finding today's thread:", error);
@@ -30,13 +35,17 @@ const handleDuplicatePost = async (msg, lastUpdate) => {
   );
 
   // Try to find today's thread
-  const existingThread = await findTodayThread(msg.channel, msg.author.id);
+  const existingThread = await findTodayThread(
+    msg.channel,
+    msg.author.id,
+    msg.author.username
+  );
 
   let reply;
   if (existingThread) {
-    reply = `You've already posted your standup for today. Please continue the conversation in your existing thread: ${existingThread.url}`;
+    reply = `You've already posted your standup for today. Please continue the conversation in your existing thread: ${existingThread.url}\n\nThis message will self-destruct in 5 seconds...`;
   } else {
-    reply = `You've already posted your standup for today. Please edit your existing post if you need to make updates.`;
+    reply = `You've already posted your standup for today. Please edit your existing post if you need to make updates.\n\nThis message will self-destruct in 5 seconds...`;
   }
 
   try {
@@ -45,14 +54,14 @@ const handleDuplicatePost = async (msg, lastUpdate) => {
     // Delete the duplicate message
     await msg.delete();
 
-    // Delete our reply after 30 seconds
+    // Delete our reply after 5 seconds
     setTimeout(async () => {
       try {
         await replyMsg.delete();
       } catch (error) {
         console.error("Error deleting reply message:", error);
       }
-    }, 30000);
+    }, 5000);
   } catch (error) {
     console.error("Error handling duplicate post:", error);
   }
@@ -60,11 +69,9 @@ const handleDuplicatePost = async (msg, lastUpdate) => {
 
 const createThreadForPost = async (msg, config, streakCount) => {
   try {
-    // Create the thread first
+    // Create the thread first using the consistent naming function
     const thread = await msg.startThread({
-      name: `${
-        msg.author.username
-      }'s standup ${new Date().toLocaleDateString()}`,
+      name: generateThreadName(msg.author.username, new Date()),
       autoArchiveDuration: 1440, // 24 hours in minutes
     });
 
@@ -130,48 +137,44 @@ const processStandupMessage = async (msg, config) => {
   if (msg.channel.name !== config.channelName) return;
   if (msg.channel.isThread()) return;
 
-  // Check if user has already posted today using fresh database check
+  // Get user data first
+  const dbUser = getOrCreateDBUser(msg);
+  const userData = dbUser.value();
+
+  // Check if user has already posted today
   const canPost = userStreakNotAlreadyUpdatedToday(
-    msg.author.id,
+    userData,
     config.dayStartHour,
     config.dayStartMinute
   );
 
-  if (canPost) {
-    // yep
-    console.log(
-      `Validdd new standup post - processing for ${msg.author.username}`
-    );
-
-    // Get user data and always update lastUpdate
-    const dbUser = getOrCreateDBUser(msg);
-    const lastUpdateSuccess = updateLastUpdate(msg, dbUser);
-
-    if (!lastUpdateSuccess) {
-      console.error(`Failed to update lastUpdate for ${msg.author.username}`);
-      return;
-    }
-
-    // Try to update streak (this will only succeed on valid weekdays)
-    const streakUpdated = addToStreak(msg, dbUser);
-
-    if (streakUpdated) {
-      // Get fresh user data after streak update
-      const updatedUser = db
-        .get("users")
-        .find({ userID: msg.author.id })
-        .value();
-      console.log(`Fresh user data after streak update:`, {
-        streak: updatedUser.streak,
-        lastUpdate: updatedUser.lastUpdate,
-      });
-
-      await createThreadForPost(msg, config, updatedUser.streak || 1);
-    }
-  } else {
-    // Get fresh user data for duplicate handling
-    const userData = db.get("users").find({ userID: msg.author.id }).value();
+  if (!canPost) {
     await handleDuplicatePost(msg, userData.lastUpdate);
+    return;
+  }
+
+  console.log(`Valid new standup post - processing for ${msg.author.username}`);
+
+  // Always update lastUpdate for valid posts
+  const lastUpdateSuccess = updateLastUpdate(msg, dbUser);
+
+  if (!lastUpdateSuccess) {
+    console.error(`Failed to update lastUpdate for ${msg.author.username}`);
+    return;
+  }
+
+  // Try to update streak (this will only succeed on valid weekdays)
+  const streakUpdated = addToStreak(msg, dbUser);
+
+  if (streakUpdated) {
+    // Get fresh user data after streak update
+    const updatedUser = db.get("users").find({ userID: msg.author.id }).value();
+    console.log(`Fresh user data after streak update:`, {
+      streak: updatedUser.streak,
+      lastUpdate: updatedUser.lastUpdate,
+    });
+
+    await createThreadForPost(msg, config, updatedUser.streak || 1);
   }
 };
 

@@ -115,6 +115,13 @@ const getUsersWhoCouldLoseTheirStreak = (dayStartHour, dayStartMinute) => {
   return listText;
 };
 
+const userStreakUpdatedInPastWeek = (user) => {
+  if (!user || !user.lastUpdate) return false;
+  const userLastUpdate = new Date(user.lastUpdate);
+  const timeSinceLastUpdate = new Date() - userLastUpdate;
+  return timeSinceLastUpdate < 7 * ONE_DAY && isWeekday(userLastUpdate);
+};
+
 const getUsersWhoPostedInThePastWeek = () => {
   let listText = "";
   const users = db.get("users").value();
@@ -122,9 +129,6 @@ const getUsersWhoPostedInThePastWeek = () => {
     console.error("FATAL ERROR: Users table is missing from database");
     process.exit(1);
   }
-
-  // Import streak functions here to avoid circular dependency
-  const { userStreakUpdatedInPastWeek } = require("./streaks");
 
   const pastWeekUsers = users.filter(userStreakUpdatedInPastWeek);
   if (pastWeekUsers.length > 0) {

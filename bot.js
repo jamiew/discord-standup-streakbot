@@ -15,7 +15,21 @@ const Scheduler = require("./scheduler");
 
 const scheduler = new Scheduler();
 
-const processMessageForStreak = (msg) => {
+// Find today's thread for a user
+const findTodayThread = async (channel, userId) => {
+  try {
+    const today = new Date().toLocaleDateString();
+    const threads = await channel.threads.fetch();
+    return threads.threads.find(
+      (thread) => thread.name.includes(today) && thread.ownerId === userId
+    );
+  } catch (error) {
+    console.error("Error finding today's thread:", error);
+    return null;
+  }
+};
+
+const processMessageForStreak = async (msg) => {
   const dbUser = getOrCreateDBUser(msg);
   if (
     userStreakNotAlreadyUpdatedToday(
@@ -26,8 +40,26 @@ const processMessageForStreak = (msg) => {
   ) {
     addToStreak(msg, dbUser);
   } else {
-    const reply = `howdy partner, it looks like you posted multiple times to the server's #${msg.channel.name} channel today. We'd like to avoid overshadowing daily status updates with other conversations, so we'd appreciate it if you would move this conversation to a thread or another channel. If you want to update your standup, just edit the existing post`;
-    msg.reply(reply).catch((e) => console.error("error replying", e));
+    // Find user's existing thread from today
+    const existingThread = await findTodayThread(msg.channel, msg.author.id);
+
+    let reply;
+    if (existingThread) {
+      reply = `You already started a thread for today, please post there instead: ${existingThread.url}`;
+    } else {
+      reply = `You've already posted your standup for today. I couldn't find your thread (it may have been renamed), but please edit your existing post if you need to make updates.`;
+    }
+
+    await msg
+      .reply({ content: reply, ephemeral: true })
+      .catch((e) => console.error("error replying", e));
+
+    // Delete the duplicate message
+    try {
+      await msg.delete();
+    } catch (error) {
+      console.error("Error deleting duplicate message:", error);
+    }
   }
 };
 
@@ -95,41 +127,47 @@ client.on("messageCreate", async (message) => {
   }
 
   // Process streak before creating thread
-  processMessageForStreak(message);
+  await processMessageForStreak(message);
 
-  // Create thread for discussion
-  try {
-    // Create the thread first
-    const thread = await message.startThread({
-      name: `${
-        message.author.username
-      }'s standup ${new Date().toLocaleDateString()}`,
-      autoArchiveDuration: 1440, // 24 hours in minutes
-    });
-
-    // Then add reactions to the original standup post (just ⭐ and one random emoji)
-    await addReactions(message, 2);
-
-    // Send thread messages without reactions
-    await thread.send("This thread will automatically archive in 24 hours");
-    // await thread.send(
-    //   `Welcome to your standup thread, ${message.author}! Feel free to add more context or discuss your update here. 💬`
-    // );
-
-    // Award glifbux for creating a thread
+  // Only create thread if this is their first post today
+  if (
+    userStreakNotAlreadyUpdatedToday(
+      getOrCreateDBUser(message).value(),
+      config.dayStartHour,
+      config.dayStartMinute
+    )
+  ) {
+    // Create thread for discussion
     try {
-      await awardGlifbux(message.author, config.threadRewardAmount);
-      await thread.send(
-        `🎉 You've been awarded ${config.threadRewardAmount} glifbux for creating this thread! Check your balance with /balance`
-      );
+      // Create the thread first
+      const thread = await message.startThread({
+        name: `${
+          message.author.username
+        }'s standup ${new Date().toLocaleDateString()}`,
+        autoArchiveDuration: 1440, // 24 hours in minutes
+      });
+
+      // Then add reactions to the original standup post (just ⭐ and one random emoji)
+      await addReactions(message, 2);
+
+      // Send thread messages without reactions
+      await thread.send("This thread will automatically archive in 24 hours");
+
+      // Award glifbux for creating a thread
+      try {
+        await awardGlifbux(message.author, config.threadRewardAmount);
+        await thread.send(
+          `🎉 You've been awarded ${config.threadRewardAmount} glifbux for creating this thread! Check your balance with /balance`
+        );
+      } catch (error) {
+        console.error("Error awarding glifbux:", error);
+        await thread.send(
+          "❌ There was an error awarding glifbux for this thread. The API might be down."
+        );
+      }
     } catch (error) {
-      console.error("Error awarding glifbux:", error);
-      await thread.send(
-        "❌ There was an error awarding glifbux for this thread. The API might be down."
-      );
+      console.error("Error creating thread or adding reactions:", error);
     }
-  } catch (error) {
-    console.error("Error creating thread or adding reactions:", error);
   }
 });
 

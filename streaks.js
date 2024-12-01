@@ -44,13 +44,6 @@ const userStreakStillNeedsUpdatingToday = (
   );
 };
 
-const userStreakUpdatedInPastWeek = (user) => {
-  if (!user || !user.lastUpdate) return false;
-  const userLastUpdate = new Date(user.lastUpdate);
-  const timeSinceLastUpdate = new Date() - userLastUpdate;
-  return timeSinceLastUpdate < 7 * ONE_DAY && isWeekday(userLastUpdate);
-};
-
 const updateLastUpdate = (msg, dbUser) => {
   console.log(`Updating lastUpdate for ${msg.author.username}`);
   const now = new Date();
@@ -153,7 +146,6 @@ module.exports = {
   userStreakNotAlreadyUpdatedToday,
   userStreakLastUpdatedLastWeekday,
   userStreakStillNeedsUpdatingToday,
-  userStreakUpdatedInPastWeek,
   updateLastUpdate,
   addToStreak,
 };

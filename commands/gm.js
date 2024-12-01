@@ -1,6 +1,8 @@
 const { SlashCommandBuilder } = require("discord.js");
 const { broadcastMorningAnnouncement } = require("../broadcasts");
 
+// lol
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("gm")

@@ -1,5 +1,5 @@
 const { getOrCreateDBUser } = require("./db");
-const { addToStreak, userStreakNotAlreadyUpdatedToday } = require("./streaks");
+const { addToStreak } = require("./streaks");
 const { awardGlifbux } = require("./economy");
 const {
   broadcastMorningAnnouncement,
@@ -15,40 +15,47 @@ const Scheduler = require("./scheduler");
 
 const scheduler = new Scheduler();
 
-// Find today's thread for a user
-const findTodayThread = async (channel, userId) => {
-  try {
-    const today = new Date().toLocaleDateString();
-    const threads = await channel.threads.fetch();
-    return threads.threads.find(
-      (thread) => thread.name.includes(today) && thread.ownerId === userId
-    );
-  } catch (error) {
-    console.error("Error finding today's thread:", error);
-    return null;
-  }
+// Check if user has already posted today based on their lastUpdate timestamp
+const hasPostedToday = (user) => {
+  if (!user.lastUpdate) return false;
+
+  const lastUpdate = new Date(user.lastUpdate);
+  const now = new Date();
+
+  return lastUpdate.toDateString() === now.toDateString();
 };
 
 const processMessageForStreak = async (msg) => {
   const dbUser = getOrCreateDBUser(msg);
-  if (
-    userStreakNotAlreadyUpdatedToday(
-      dbUser.value(),
-      config.dayStartHour,
-      config.dayStartMinute
-    )
-  ) {
-    addToStreak(msg, dbUser);
-  } else {
-    // Find user's existing thread from today
-    const existingThread = await findTodayThread(msg.channel, msg.author.id);
+  const user = dbUser.value();
 
-    let reply;
-    if (existingThread) {
-      reply = `You already started a thread for today, please post there instead: ${existingThread.url}`;
-    } else {
-      reply = `You've already posted your standup for today. I couldn't find your thread (it may have been renamed), but please edit your existing post if you need to make updates.`;
-    }
+  console.log(
+    `[${new Date().toISOString()}] Standup post from ${msg.author.username} (${
+      msg.author.id
+    })`
+  );
+  console.log(
+    `Current streak: ${user.streak || 0}, Best streak: ${user.bestStreak || 0}`
+  );
+  console.log(
+    `Last update: ${
+      user.lastUpdate ? new Date(user.lastUpdate).toISOString() : "Never"
+    }`
+  );
+
+  if (!hasPostedToday(user)) {
+    console.log(
+      `Valid new standup post - processing streak update for ${msg.author.username}`
+    );
+    addToStreak(msg, dbUser);
+    return true;
+  } else {
+    console.log(
+      `Duplicate standup post detected from ${
+        msg.author.username
+      } - already posted today at ${new Date(user.lastUpdate).toISOString()}`
+    );
+    const reply = `You've already posted your standup for today. Please edit your existing post if you need to make updates.`;
 
     await msg
       .reply({ content: reply, ephemeral: true })
@@ -57,9 +64,11 @@ const processMessageForStreak = async (msg) => {
     // Delete the duplicate message
     try {
       await msg.delete();
+      console.log(`Deleted duplicate standup post from ${msg.author.username}`);
     } catch (error) {
       console.error("Error deleting duplicate message:", error);
     }
+    return false;
   }
 };
 
@@ -126,17 +135,10 @@ client.on("messageCreate", async (message) => {
     return;
   }
 
-  // Process streak before creating thread
-  await processMessageForStreak(message);
+  // Process streak and only continue if it's their first post today
+  const isFirstPost = await processMessageForStreak(message);
 
-  // Only create thread if this is their first post today
-  if (
-    userStreakNotAlreadyUpdatedToday(
-      getOrCreateDBUser(message).value(),
-      config.dayStartHour,
-      config.dayStartMinute
-    )
-  ) {
+  if (isFirstPost) {
     // Create thread for discussion
     try {
       // Create the thread first
@@ -147,17 +149,32 @@ client.on("messageCreate", async (message) => {
         autoArchiveDuration: 1440, // 24 hours in minutes
       });
 
+      console.log(
+        `Created new thread for ${message.author.username}: ${thread.url}`
+      );
+
       // Then add reactions to the original standup post (just ⭐ and one random emoji)
       await addReactions(message, 2);
 
+      // Get updated user data after streak processing
+      const updatedUser = getOrCreateDBUser(message).value();
+      const streakCount = updatedUser.streak || 1;
+      const streakText =
+        streakCount === 1 ? "first day" : `${streakCount} day streak`;
+
       // Send thread messages without reactions
-      await thread.send("This thread will automatically archive in 24 hours");
+      await thread.send(
+        `This thread will automatically archive in 24 hours\nYou're on a ${streakText}! 🎉`
+      );
 
       // Award glifbux for creating a thread
       try {
         await awardGlifbux(message.author, config.threadRewardAmount);
         await thread.send(
-          `🎉 You've been awarded ${config.threadRewardAmount} glifbux for creating this thread! Check your balance with /balance`
+          `You've been awarded ${config.threadRewardAmount} glifbux for creating this thread! Check your balance with /balance`
+        );
+        console.log(
+          `Awarded ${config.threadRewardAmount} glifbux to ${message.author.username} for thread creation`
         );
       } catch (error) {
         console.error("Error awarding glifbux:", error);

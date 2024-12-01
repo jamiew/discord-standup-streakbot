@@ -1,17 +1,8 @@
 const { getOrCreateDBUser } = require("./db");
-const { addToStreak } = require("./streaks");
+const { addToStreak, userStreakNotAlreadyUpdatedToday } = require("./streaks");
 const { awardGlifbux } = require("./economy");
 const { addReactions } = require("./reactions");
-
-// Check if user has already posted today based on their lastUpdate timestamp
-const hasPostedToday = (user) => {
-  if (!user.lastUpdate) return false;
-
-  const lastUpdate = new Date(user.lastUpdate);
-  const now = new Date();
-
-  return lastUpdate.toDateString() === now.toDateString();
-};
+const { calculateGlifbuxReward } = require("./utils");
 
 const handleDuplicatePost = async (msg, lastUpdate) => {
   console.log(
@@ -33,7 +24,7 @@ const handleDuplicatePost = async (msg, lastUpdate) => {
   }
 };
 
-const createThreadForPost = async (msg, config) => {
+const createThreadForPost = async (msg, config, streakCount) => {
   try {
     // Create the thread first
     const thread = await msg.startThread({
@@ -48,30 +39,31 @@ const createThreadForPost = async (msg, config) => {
     // Then add reactions to the original standup post
     await addReactions(msg, 2);
 
-    // Get updated user data after streak processing
-    const updatedUser = getOrCreateDBUser(msg).value();
-    const streakCount = updatedUser.streak || 1;
+    // Calculate glifbux reward based on streak
+    const glifbuxReward = calculateGlifbuxReward(streakCount);
+
+    // Format streak message
     const streakText =
       streakCount === 1 ? "first day" : `${streakCount} day streak`;
+    const rewardText = `You earned ${glifbuxReward} glifbux for your standup today!`;
 
     // Send thread messages
     await thread.send(
-      `This thread will automatically archive in 24 hours\nYou're on a ${streakText}! 🎉`
+      `This thread will automatically archive in 24 hours\n` +
+        `You're on a ${streakText}! 🎉\n` +
+        `${rewardText} 💰`
     );
 
     // Award glifbux
     try {
-      await awardGlifbux(msg.author, config.threadRewardAmount);
-      await thread.send(
-        `You've been awarded ${config.threadRewardAmount} glifbux for creating this thread! Check your balance with /balance`
-      );
+      await awardGlifbux(msg.author, glifbuxReward);
       console.log(
-        `Awarded ${config.threadRewardAmount} glifbux to ${msg.author.username} for thread creation`
+        `Awarded ${glifbuxReward} glifbux to ${msg.author.username} for standup post (streak: ${streakCount})`
       );
     } catch (error) {
       console.error("Error awarding glifbux:", error);
       await thread.send(
-        "❌ There was an error awarding glifbux for this thread. The API might be down."
+        "❌ There was an error awarding glifbux for this post. The API might be down."
       );
     }
   } catch (error) {
@@ -103,12 +95,21 @@ const processStandupMessage = async (msg, config) => {
     }`
   );
 
-  if (!hasPostedToday(user)) {
+  if (
+    userStreakNotAlreadyUpdatedToday(
+      user,
+      config.dayStartHour,
+      config.dayStartMinute
+    )
+  ) {
     console.log(
       `Valid new standup post - processing streak update for ${msg.author.username}`
     );
     addToStreak(msg, dbUser);
-    await createThreadForPost(msg, config);
+
+    // Get updated streak count after addToStreak
+    const updatedUser = dbUser.value();
+    await createThreadForPost(msg, config, updatedUser.streak || 1);
   } else {
     await handleDuplicatePost(msg, user.lastUpdate);
   }

@@ -130,9 +130,7 @@ client.on("messageCreate", async (message) => {
       }'s standup ${new Date().toLocaleDateString()}`,
       autoArchiveDuration: 1440, // 24 hours in minutes
     });
-    await thread.send(
-      "Feel free to discuss this standup here! This thread will automatically archive in 24 hours."
-    );
+    await thread.send("This thread will automatically archive in 24 hours");
   } catch (error) {
     console.error("Error creating thread:", error);
   }

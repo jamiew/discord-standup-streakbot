@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require("discord.js");
-const { glifbuxAPI } = require("./economy");
+const { getBalance, sendGlifbux, getInventory } = require("./economy");
 
 // Command definitions
 const commands = [
@@ -28,13 +28,36 @@ const commands = [
         .setRequired(true)
         .setMinValue(1)
     ),
+  new SlashCommandBuilder()
+    .setName("inventory")
+    .setDescription("Check inventory")
+    .addUserOption((option) =>
+      option
+        .setName("user")
+        .setDescription("User to check inventory for (optional)")
+        .setRequired(false)
+    ),
 ];
+
+// Format inventory item for display
+const formatInventoryItem = (item) => {
+  const parts = [
+    `**${item.name}**`,
+    item.description && `• ${item.description}`,
+    item.rarity && `• Rarity: ${item.rarity}`,
+    item.quantity > 1 && `• Quantity: ${item.quantity}`,
+    item.durability && `• Durability: ${item.durability}`,
+    item.weight && `• Weight: ${item.weight}`,
+  ].filter(Boolean);
+
+  return parts.join("\n");
+};
 
 // Command handlers
 const handleBalance = async (interaction) => {
   try {
     const targetUser = interaction.options.getUser("user") || interaction.user;
-    const balance = await glifbuxAPI.getBalance(targetUser);
+    const balance = await getBalance(targetUser);
 
     if (targetUser.id === interaction.user.id) {
       await interaction.reply(`Your balance: ${balance} glifbux 💰`);
@@ -46,7 +69,7 @@ const handleBalance = async (interaction) => {
   } catch (error) {
     console.error("Error getting balance:", error);
     await interaction.reply({
-      content: "Error checking balance!",
+      content: "Error checking balance! The glifbux API might be down.",
       ephemeral: true,
     });
   }
@@ -57,8 +80,8 @@ const handleSend = async (interaction) => {
   const amount = interaction.options.getInteger("amount");
 
   try {
-    await glifbuxAPI.sendGlifbux(interaction.user, targetUser, amount);
-    const newBalance = await glifbuxAPI.getBalance(interaction.user);
+    await sendGlifbux(interaction.user, targetUser, amount);
+    const newBalance = await getBalance(interaction.user);
     await interaction.reply(
       `Successfully sent ${amount} glifbux to ${targetUser}! Your new balance: ${newBalance} glifbux 💸`
     );
@@ -71,10 +94,41 @@ const handleSend = async (interaction) => {
     } else {
       console.error("Error sending glifbux:", error);
       await interaction.reply({
-        content: "Error processing transfer!",
+        content: "Error processing transfer! The glifbux API might be down.",
         ephemeral: true,
       });
     }
+  }
+};
+
+const handleInventory = async (interaction) => {
+  try {
+    const targetUser = interaction.options.getUser("user") || interaction.user;
+    const inventory = await getInventory(targetUser);
+
+    if (inventory.length === 0) {
+      const message =
+        targetUser.id === interaction.user.id
+          ? "You don't have any items in your inventory yet!"
+          : `${targetUser.username} doesn't have any items in their inventory yet!`;
+      await interaction.reply(message);
+      return;
+    }
+
+    const header =
+      targetUser.id === interaction.user.id
+        ? "Your inventory:"
+        : `${targetUser.username}'s inventory:`;
+
+    const itemsList = inventory.map(formatInventoryItem).join("\n\n");
+
+    await interaction.reply(`${header}\n\n${itemsList}`);
+  } catch (error) {
+    console.error("Error getting inventory:", error);
+    await interaction.reply({
+      content: "Error checking inventory! The inventory API might be down.",
+      ephemeral: true,
+    });
   }
 };
 
@@ -82,6 +136,7 @@ const handleSend = async (interaction) => {
 const commandHandlers = {
   balance: handleBalance,
   send: handleSend,
+  inventory: handleInventory,
 };
 
 // Main interaction handler
@@ -98,7 +153,8 @@ const handleInteraction = async (interaction) => {
     try {
       if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({
-          content: "There was an error processing your command!",
+          content:
+            "There was an error processing your command! The API might be down.",
           ephemeral: true,
         });
       }

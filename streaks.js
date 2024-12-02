@@ -1,4 +1,5 @@
 const { ONE_DAY, isWeekday, getMostRecentWeekdayStart } = require("./utils");
+const { db } = require("./db");
 
 const userStreakNotAlreadyUpdatedToday = (
   user,

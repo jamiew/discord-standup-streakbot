@@ -95,22 +95,21 @@ async function sendGlifbux(fromUser, toUser, amount) {
 }
 
 /**
- * Award glifbux to a user (system transfer)
+ * Award glifbux to a user (system mint)
  * @param {Object} user - Discord user to award glifbux to
  * @param {number} amount - Amount of glifbux to award
  * @returns {Promise<boolean>} Success status
  */
 async function awardGlifbux(user, amount) {
   const toAddress = `discord:${user.username}`;
-  console.log(`[GlifbuxAPI] Awarding ${amount} glifbux to ${toAddress}`);
+  console.log(`[GlifbuxAPI] Minting ${amount} glifbux to ${toAddress}`);
   const startTime = Date.now();
 
   try {
-    const response = await fetch(`${GLIFBUX_API}/send`, {
+    const response = await fetch(`${GLIFBUX_API}/mint`, {
       method: "POST",
       headers: getHeaders(),
       body: JSON.stringify({
-        from: "system",
         to: toAddress,
         amount: amount,
       }),
@@ -119,11 +118,11 @@ async function awardGlifbux(user, amount) {
     await handleApiError(response);
 
     const endTime = Date.now();
-    console.log(`[GlifbuxAPI] Award completed in ${endTime - startTime}ms`);
+    console.log(`[GlifbuxAPI] Mint completed in ${endTime - startTime}ms`);
 
     return true;
   } catch (error) {
-    console.error("[GlifbuxAPI] Error awarding glifbux:", error);
+    console.error("[GlifbuxAPI] Error minting glifbux:", error);
     throw error;
   }
 }
@@ -155,9 +154,52 @@ async function getInventory(user) {
   }
 }
 
+/**
+ * Add an item to a user's inventory
+ * @param {Object} user - Discord user
+ * @param {Object} item - Item to add with properties: name, description, rarity, quantity
+ * @returns {Promise<boolean>} Success status
+ */
+async function addToInventory(user, item) {
+  const address = `discord:${user.username}`;
+  console.log(
+    `[GlifInventoryAPI] Adding item ${item.name} to ${address}'s inventory`
+  );
+  const startTime = Date.now();
+
+  try {
+    const response = await fetch(`${INVENTORY_API}/add-item`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({
+        address: address,
+        item: {
+          name: item.name,
+          description: item.description,
+          type: item.type || "item",
+          rarity: item.rarity,
+          quantity: item.quantity,
+          image: item.image,
+        },
+      }),
+    });
+
+    await handleApiError(response);
+
+    const endTime = Date.now();
+    console.log(`[GlifInventoryAPI] Added item in ${endTime - startTime}ms`);
+
+    return true;
+  } catch (error) {
+    console.error("[GlifInventoryAPI] Error adding item to inventory:", error);
+    throw error;
+  }
+}
+
 module.exports = {
   getBalance,
   sendGlifbux,
   awardGlifbux,
   getInventory,
+  addToInventory,
 };

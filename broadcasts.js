@@ -2,7 +2,7 @@ const {
   getUsersWhoPostedYesterday,
   getUsersWhoCouldLoseTheirStreak,
   getUsersWhoPostedInThePastWeek,
-} = require("./db");
+} = require("./streaks");
 
 const broadcastMorningAnnouncement = (
   channel,

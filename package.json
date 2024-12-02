@@ -5,7 +5,7 @@
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
-    "dev": "pnpm dlx nodemon bot.js --watch '**/*.js'",
+    "dev": "pnpm dlx nodemon bot.js --ext 'js,mjs,cjs' --watch '.'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {

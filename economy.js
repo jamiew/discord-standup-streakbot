@@ -110,7 +110,7 @@ async function awardGlifbux(user, amount) {
       method: "POST",
       headers: getHeaders(),
       body: JSON.stringify({
-        to: toAddress,
+        address: toAddress,
         amount: amount,
       }),
     });

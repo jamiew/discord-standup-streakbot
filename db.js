@@ -62,59 +62,6 @@ const getOrCreateDBUser = (msg) => {
   return dbUser;
 };
 
-const getUsersWhoPostedYesterday = (dayStartHour, dayStartMinute) => {
-  let listText = "";
-  const users = db.get("users").value();
-  if (!users) {
-    console.error("FATAL ERROR: Users table is missing from database");
-    process.exit(1);
-  }
-
-  // Import streak functions here to avoid circular dependency
-  const { userStreakLastUpdatedLastWeekday } = require("./streaks");
-
-  const activeStreakUsers = users.filter((user) =>
-    userStreakLastUpdatedLastWeekday(user, dayStartHour, dayStartMinute)
-  );
-
-  if (activeStreakUsers.length > 0) {
-    listText += "Current running streaks:\n";
-    activeStreakUsers
-      .sort((a, b) => b.streak - a.streak)
-      .forEach((user) => {
-        const username = user.username;
-        listText += `\n\t${username}: ${user.streak} (best: ${user.bestStreak})`;
-      });
-  }
-
-  return listText;
-};
-
-const getUsersWhoCouldLoseTheirStreak = (dayStartHour, dayStartMinute) => {
-  let listText = "";
-  const users = db.get("users").value();
-  if (!users) {
-    console.error("FATAL ERROR: Users table is missing from database");
-    process.exit(1);
-  }
-
-  // Import streak functions here to avoid circular dependency
-  const { userStreakStillNeedsUpdatingToday } = require("./streaks");
-
-  const atRiskUsers = users.filter((user) =>
-    userStreakStillNeedsUpdatingToday(user, dayStartHour, dayStartMinute)
-  );
-  if (atRiskUsers.length > 0) {
-    listText +=
-      "\nThese users still need to post today if they want to keep their current streak alive:";
-    atRiskUsers.forEach((user) => {
-      const username = user.username;
-      listText += `\n\t${username}: ${user.streak} (best: ${user.bestStreak})`;
-    });
-  }
-  return listText;
-};
-
 const userStreakUpdatedInPastWeek = (user) => {
   if (!user || !user.lastUpdate) return false;
   const userLastUpdate = new Date(user.lastUpdate);
@@ -122,34 +69,7 @@ const userStreakUpdatedInPastWeek = (user) => {
   return timeSinceLastUpdate < 7 * ONE_DAY && isWeekday(userLastUpdate);
 };
 
-const getUsersWhoPostedInThePastWeek = () => {
-  let listText = "";
-  const users = db.get("users").value();
-  if (!users) {
-    console.error("FATAL ERROR: Users table is missing from database");
-    process.exit(1);
-  }
-
-  const pastWeekUsers = users.filter(userStreakUpdatedInPastWeek);
-  if (pastWeekUsers.length > 0) {
-    pastWeekUsers.sort((a, b) => b.bestStreak - a.bestStreak);
-
-    listText += "Users who have posted in the past week:\n";
-    pastWeekUsers.forEach((user) => {
-      listText += `\n\t${user.username} (best streak: ${user.bestStreak})`;
-    });
-    listText += "\n\nKeep up the good work!";
-  } else {
-    listText =
-      "\nNo users have posted in the past week! I'll have an existential meltdown now.";
-  }
-  return listText;
-};
-
 module.exports = {
   db,
   getOrCreateDBUser,
-  getUsersWhoPostedYesterday,
-  getUsersWhoCouldLoseTheirStreak,
-  getUsersWhoPostedInThePastWeek,
 };

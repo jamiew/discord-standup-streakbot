@@ -168,7 +168,7 @@ async function addToInventory(user, item) {
   const startTime = Date.now();
 
   try {
-    const response = await fetch(`${INVENTORY_API}/add-item`, {
+    const response = await fetch(`${INVENTORY_API}/add`, {
       method: "POST",
       headers: getHeaders(),
       body: JSON.stringify({
@@ -196,10 +196,23 @@ async function addToInventory(user, item) {
   }
 }
 
+const discordEmbedFromInventoryItem = (item) => {
+  return {
+    title: item.name,
+    description: item.description,
+    fields: [
+      { name: "Rarity", value: item.rarity, inline: true },
+      { name: "Quantity", value: item.quantity, inline: true },
+    ],
+    image: { url: item.image },
+  };
+};
+
 module.exports = {
   getBalance,
   sendGlifbux,
   awardGlifbux,
   getInventory,
   addToInventory,
+  discordEmbedFromInventoryItem,
 };

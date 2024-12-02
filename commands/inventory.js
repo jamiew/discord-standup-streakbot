@@ -1,19 +1,5 @@
 const { SlashCommandBuilder } = require("discord.js");
-const { getInventory } = require("../economy");
-
-// Format inventory item for display
-const formatInventoryItem = (item) => {
-  const parts = [
-    `**${item.name}**`,
-    item.description && `• ${item.description}`,
-    item.rarity && `• Rarity: ${item.rarity}`,
-    item.quantity > 1 && `• Quantity: ${item.quantity}`,
-    item.durability && `• Durability: ${item.durability}`,
-    item.weight && `• Weight: ${item.weight}`,
-  ].filter(Boolean);
-
-  return parts.join("\n");
-};
+const { getInventory, discordEmbedFromInventoryItem } = require("../economy");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -45,11 +31,14 @@ module.exports = {
           ? "Your inventory:"
           : `${targetUser.username}'s inventory:`;
 
-      const itemsList = inventory.map(formatInventoryItem).join("\n\n");
+      const embeds = inventory.map((item) =>
+        discordEmbedFromInventoryItem(item)
+      );
 
       await interaction.reply({
-        content: `${header}\n\n${itemsList}`,
+        title: header,
         ephemeral: true,
+        embeds,
       });
     } catch (error) {
       console.error("Error getting inventory:", error);

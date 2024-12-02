@@ -17,10 +17,11 @@ const findTodayThread = async (channel, userId, username) => {
   try {
     const expectedThreadName = generateThreadName(username, new Date());
     const threads = await channel.threads.fetch();
-    return threads.threads.find(
-      (thread) =>
-        thread.name === expectedThreadName && thread.ownerId === userId
-    );
+    console.log("findTodayThread", {
+      expectedThreadName,
+      threadNames: threads.threads.map((t) => t.name),
+    });
+    return threads.threads.find((thread) => thread.name === expectedThreadName);
   } catch (error) {
     console.error("Error finding today's thread:", error);
     return null;
@@ -43,28 +44,12 @@ const handleDuplicatePost = async (msg, lastUpdate) => {
 
   let reply;
   if (existingThread) {
-    reply = `You've already posted your standup for today. Please continue the conversation in your existing thread: ${existingThread.url}\n\nThis message will self-destruct in 5 seconds...`;
+    reply = `You've already posted your standup for today. Please continue the conversation in your existing thread: ${existingThread.url}`;
   } else {
-    reply = `You've already posted your standup for today. Please edit your existing post if you need to make updates.\n\nThis message will self-destruct in 5 seconds...`;
+    reply = `You've already posted your standup for today. Please edit your existing post if you need to make updates.`;
   }
 
-  try {
-    const replyMsg = await msg.reply({ content: reply });
-
-    // Delete the duplicate message
-    await msg.delete();
-
-    // Delete our reply after 5 seconds
-    setTimeout(async () => {
-      try {
-        await replyMsg.delete();
-      } catch (error) {
-        console.error("Error deleting reply message:", error);
-      }
-    }, 5000);
-  } catch (error) {
-    console.error("Error handling duplicate post:", error);
-  }
+  await msg.reply({ content: reply });
 };
 
 const createThreadForPost = async (msg, config, streakCount) => {

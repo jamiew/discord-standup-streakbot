@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require("discord.js");
-const { getInventory } = require("../economy");
+const { addToInventory } = require("../economy");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -7,26 +7,17 @@ module.exports = {
     .setDescription("Craft an Unwrapped Collectible Trading Card"),
   async execute(interaction) {
     try {
-      // Get user's current inventory
-      const inventory = await getInventory(interaction.user);
-
       // Create new card
       const newCard = {
         name: "Unwrapped Collectible Trading Card",
         description: "A mysterious trading card, still in its wrapper",
         rarity: "Common",
         quantity: 1,
+        type: "card",
       };
 
-      // Add to inventory
-      inventory.push(newCard);
-
-      // Save updated inventory
-      await interaction.client.db
-        .get("inventories")
-        .find({ userId: interaction.user.id })
-        .assign({ items: inventory })
-        .write();
+      // Add to inventory via API
+      await addToInventory(interaction.user, newCard);
 
       await interaction.reply({
         content:

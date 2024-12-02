@@ -10,7 +10,7 @@ const getHeaders = () => {
   };
 
   if (process.env.CHAIRMAN_PASSWORD) {
-    headers["Authorization"] = process.env.CHAIRMAN_PASSWORD;
+    headers["Authorization"] = `Bearer ${process.env.CHAIRMAN_PASSWORD}`;
   }
 
   return headers;

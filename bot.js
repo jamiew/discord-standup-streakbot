@@ -1,5 +1,5 @@
 const { Client, Events, GatewayIntentBits, Collection } = require("discord.js");
-const RemindersScheduler = require("./reminders-scheduler");
+const RemindersScheduler = require("./reminders");
 const { loadCommands } = require("./command-loader");
 const { handleMessage } = require("./message-handler");
 

@@ -45,8 +45,9 @@ module.exports = {
         });
       } else {
         console.error("Error sending glifbux:", error);
+        const message = error?.message;
         await interaction.reply({
-          content: "Error processing tip! The glifbux API might be down.",
+          content: `Error processing tip: ${message ?? "unknown"}`,
           ephemeral: true,
         });
       }

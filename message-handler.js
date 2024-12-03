@@ -17,10 +17,6 @@ const findTodayThread = async (channel, userId, username) => {
   try {
     const expectedThreadName = generateThreadName(username, new Date());
     const threads = await channel.threads.fetch();
-    console.log("findTodayThread", {
-      expectedThreadName,
-      threadNames: threads.threads.map((t) => t.name),
-    });
     return threads.threads.find((thread) => thread.name === expectedThreadName);
   } catch (error) {
     console.error("Error finding today's thread:", error);

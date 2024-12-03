@@ -40,6 +40,10 @@ client.on("ready", async () => {
   console.log("Bot is ready, registering slash commands...");
   try {
     const { commands } = loadCommands();
+    console.log(
+      "Installing commands:",
+      commands.map((c) => `/${c.name}`)
+    );
     await rest.put(
       Routes.applicationGuildCommands(client.user.id, process.env.GUILD_ID),
       { body: commands }

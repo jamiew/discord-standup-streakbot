@@ -13,7 +13,7 @@ function loadCommands() {
     const command = require(`./commands/${file}`);
     commands.push(command.data.toJSON());
     commandHandlers.set(command.data.name, command);
-    console.log(`Loaded command: ${command.data.name}`);
+    // console.log(`Loaded command: ${command.data.name}`);
   }
 
   return { commands, commandHandlers };

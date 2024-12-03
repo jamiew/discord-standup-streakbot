@@ -21,7 +21,7 @@ cp .env.sample .env
   - `MORNING_ANNOUNCEMENT_HOUR`: Hour for morning message (default: 7)
   - `MORNING_ANNOUNCEMENT_MINUTE`: Minute for morning message (default: 0)
 
-3. Install dependencies:
+1. Install dependencies:
 
 ```bash
 pnpm install

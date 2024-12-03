@@ -1,11 +1,30 @@
 const schedule = require("node-schedule");
 const { isWeekday } = require("./utils");
 const {
-  broadcastMorningAnnouncement,
-  broadcastSummary,
-} = require("./broadcasts");
+  getUsersWhoPostedYesterday,
+  getUsersWhoCouldLoseTheirStreak,
+} = require("./streaks");
 
-class Scheduler {
+// Reminder message functions
+const sendMorningAnnouncement = (channel, dayStartHour, dayStartMinute) => {
+  console.log(`New day starting: ${new Date().toUTCString()}`);
+  let announcement =
+    "Let the new day begin! Post your standup to start or continue your daily streak. Check the pinned messages for a full explanation.";
+  announcement += "\n\n";
+  announcement += getUsersWhoPostedYesterday(dayStartHour, dayStartMinute);
+  channel.send(announcement);
+};
+
+const sendReminder = (channel, dayStartHour, dayStartMinute) => {
+  let announcement =
+    "The day is half done! Don't forget to post an update if you haven't. A quick note about what you plan to do tomorrow is great too.";
+  announcement += "\n\n";
+  announcement += getUsersWhoCouldLoseTheirStreak(dayStartHour, dayStartMinute);
+  channel.send(announcement);
+};
+
+// Scheduler class to manage reminder jobs
+class RemindersScheduler {
   constructor() {
     this.morningAnnouncementJob = null;
     this.midDayReminderJob = null;
@@ -17,9 +36,6 @@ class Scheduler {
     const {
       morningAnnouncementHour,
       morningAnnouncementMinute,
-      midWeekSummaryHour,
-      midWeekSummaryMinute,
-      midWeekDayOfWeek,
       dayStartHour,
       dayStartMinute,
     } = config;
@@ -32,22 +48,7 @@ class Scheduler {
           .toString()
           .padStart(2, "0")} * * 1-5`,
         () => {
-          broadcastMorningAnnouncement(channel, dayStartHour, dayStartMinute);
-        }
-      );
-    }
-
-    if (!this.midweekJob) {
-      this.midweekJob = schedule.scheduleJob(
-        `00 ${midWeekSummaryMinute
-          .toString()
-          .padStart(2, "0")} ${midWeekSummaryHour
-          .toString()
-          .padStart(2, "0")} * * ${midWeekDayOfWeek}`,
-        () => {
-          if (isWeekday(new Date())) {
-            broadcastSummary(channel);
-          }
+          sendMorningAnnouncement(channel, dayStartHour, dayStartMinute);
         }
       );
     }
@@ -73,4 +74,4 @@ class Scheduler {
   }
 }
 
-module.exports = Scheduler;
+module.exports = RemindersScheduler;

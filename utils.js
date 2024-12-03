@@ -42,7 +42,7 @@ const calculateGlifbuxReward = (streakLength) => {
   return reward;
 };
 
-// Get reward table for /rewards command
+// Get reward table for /help command
 const getRewardTable = () => {
   const table = [];
   for (let week = 1; week <= 6; week++) {

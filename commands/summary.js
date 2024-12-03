@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require("discord.js");
-const { broadcastSummary } = require("../broadcasts");
+const { getUsersWhoPostedInThePastWeek } = require("../streaks");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -8,13 +8,12 @@ module.exports = {
   async execute(interaction) {
     try {
       await interaction.deferReply();
-      await broadcastSummary(interaction.channel);
-      await interaction.deleteReply();
+      const summary = getUsersWhoPostedInThePastWeek();
+      await interaction.editReply({ content: summary });
     } catch (error) {
-      console.error("Error broadcasting summary:", error);
-      await interaction.reply({
-        content: "Error generating summary!",
-        ephemeral: true,
+      console.error("Error showing summary:", error);
+      await interaction.editReply({
+        content: "Error generating summary! Please try again later.",
       });
     }
   },

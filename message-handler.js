@@ -91,7 +91,7 @@ const createThreadForPost = async (msg, config, streakCount) => {
         `💰 **Glifbux Info**\n` +
         `• Reward for this post: ${rewardInfo}\n` +
         `• Current balance: ${currentBalance} glifbux\n\n` +
-        `Use /rewards to see how rewards increase with streak length!`
+        `Use /help for more info on how rewards increase with streak length`
     );
 
     // Award glifbux

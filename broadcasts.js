@@ -3,6 +3,7 @@ const {
   getUsersWhoCouldLoseTheirStreak,
   getUsersWhoPostedInThePastWeek,
 } = require("./streaks");
+const { getRewardTable } = require("./utils");
 
 const broadcastMorningAnnouncement = (
   channel,
@@ -31,15 +32,36 @@ const broadcastSummary = (channel) => {
 };
 
 const broadcastHelp = (channel, guildId, channelName) => {
-  channel.send(`current debug commands:
-!summary
-!gm
-!reminder
-!help
+  const rewardTable = getRewardTable();
 
-active guild: ${guildId}
-active channel: #${channelName}
-  `);
+  let response = "**🎁 Daily Standup Reward System**\n\n";
+  response +=
+    "Post your daily standup to earn glifbux! The longer your streak, the more you earn:\n\n";
+
+  // Format the reward table
+  rewardTable.forEach(({ week, reward, example }) => {
+    response += `Week ${week}: ${reward} glifbux per day (${example})\n`;
+  });
+
+  response += "\n**Additional Info:**\n";
+  response += "• Streaks only count on weekdays\n";
+  response += "• You must post in the standup channel to earn rewards\n";
+  response += "• Only one standup post per day counts\n";
+  response += "• Edit your existing post if you need to make updates\n";
+  response += "• Use /tip to share glifbux with others\n";
+  response += "• Use /balance to check your current balance\n";
+  response += "• Use /inventory to see your items\n";
+
+  response += "\n**Debug Information:**\n";
+  response += "Available debug commands:\n";
+  response += "!summary\n";
+  response += "!gm\n";
+  response += "!reminder\n";
+  response += "!help\n\n";
+  response += `Active guild: ${guildId}\n`;
+  response += `Active channel: #${channelName}`;
+
+  channel.send(response);
 };
 
 module.exports = {

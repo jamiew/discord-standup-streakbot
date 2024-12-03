@@ -45,10 +45,16 @@ pnpm start
 
 - Tracks user standup streaks
 - Creates 24-hour discussion threads for each standup
-- Daily morning announcements
-- Mid-week summaries
-- Commands:
-  - `!gm`: Force morning announcement
-  - `!summary`: Show weekly summary
-  - `!reminder`: Send reminder
-  - `!help`: Show commands
+- Automated daily morning announcements on weekdays
+- Reward system with glifbux currency
+- Crafting system for items
+- Slash commands for easy interaction
+
+## Available Commands
+
+- `/help` - Show reward system info and available commands
+- `/summary` - Show who posted in the past week
+- `/tip` - Share glifbux with others
+- `/balance` - Check your current balance
+- `/inventory` - See your items
+- `/craft` - Craft items using your glifbux

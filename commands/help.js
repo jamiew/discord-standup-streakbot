@@ -24,16 +24,15 @@ module.exports = {
       response += "• You must post in the standup channel to earn rewards\n";
       response += "• Only one standup post per day counts\n";
       response += "• Edit your existing post if you need to make updates\n";
-      response += "• Use /tip to share glifbux with others\n";
-      response += "• Use /balance to check your current balance\n";
-      response += "• Use /inventory to see your items\n";
 
-      response += "\n**Debug Information:**\n";
-      response += "Available debug commands:\n";
-      response += "!summary\n";
-      response += "!gm\n";
-      response += "!reminder\n";
-      response += "!help\n\n";
+      response += "\n**Available Commands:**\n";
+      response += "• /help - Show this help message\n";
+      response += "• /summary - Show who posted in the past week\n";
+      response += "• /tip - Share glifbux with others\n";
+      response += "• /balance - Check your current balance\n";
+      response += "• /inventory - See your items\n";
+      response += "• /craft - Craft items using your glifbux\n\n";
+
       response += `Active guild: ${interaction.guildId}\n`;
       response += `Active channel: #${interaction.client.config.channelName}`;
 

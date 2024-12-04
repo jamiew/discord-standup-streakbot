@@ -70,9 +70,6 @@ const createThreadForPost = async (msg, config, streakCount) => {
     // Calculate glifbux reward based on streak
     const glifbuxReward = calculateGlifbuxReward(streakCount);
 
-    // Get current balance
-    const currentBalance = await getBalance(msg.author);
-
     // Format streak message
     const streakText =
       streakCount === 1 ? "first day" : `${streakCount} day streak`;
@@ -85,13 +82,10 @@ const createThreadForPost = async (msg, config, streakCount) => {
     // Send thread messages with detailed info
     await thread.send(
       `🕒 This thread will automatically archive in 24 hours\n\n` +
-        `📊 **Streak Status**\n` +
-        `• Current Streak: ${streakText}\n` +
-        `• Last Updated: ${lastUpdateDate}\n\n` +
-        `💰 **Glifbux Info**\n` +
-        `• Reward for this post: ${rewardInfo}\n` +
-        `• Current balance: ${currentBalance} glifbux\n\n` +
-        `Use /rewards to see how rewards increase with streak length!`
+        `- Current Streak: ${streakText}\n` +
+        `- Last Updated: ${lastUpdateDate}\n\n` +
+        `- Reward for this post: ${rewardInfo}\n` +
+        `Use /help for more info on how daily rewards increase with streak length!`
     );
 
     // Award glifbux

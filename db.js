@@ -62,13 +62,6 @@ const getOrCreateDBUser = (msg) => {
   return dbUser;
 };
 
-const userStreakUpdatedInPastWeek = (user) => {
-  if (!user || !user.lastUpdate) return false;
-  const userLastUpdate = new Date(user.lastUpdate);
-  const timeSinceLastUpdate = new Date() - userLastUpdate;
-  return timeSinceLastUpdate < 7 * ONE_DAY && isWeekday(userLastUpdate);
-};
-
 module.exports = {
   db,
   getOrCreateDBUser,

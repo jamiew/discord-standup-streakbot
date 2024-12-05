@@ -80,13 +80,12 @@ const createThreadForPost = async (msg, config, streakCount) => {
     const rewardInfo = `${glifbuxReward} glifbux (Week ${weekNumber} reward rate)`;
 
     // Send thread messages with detailed info
-    await thread.send(
-      `🕒 This thread will automatically archive in 24 hours\n\n` +
-        `- Current Streak: ${streakText}\n` +
-        `- Last Updated: ${lastUpdateDate}\n\n` +
-        `- Reward for this post: ${rewardInfo}\n` +
-        `Use /help for more info on how daily rewards increase with streak length!`
-    );
+    await thread.send(`- Your current Streak: ${streakText}
+- Last Updated: ${lastUpdateDate}
+- Reward for this post: ${rewardInfo}
+
+This thread will automatically archive in 24 hours
+Run \`/help\` for more info`);
 
     // Award glifbux
     try {

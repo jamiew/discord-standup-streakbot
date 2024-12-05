@@ -190,6 +190,13 @@ const getUsersWhoCouldLoseTheirStreak = (dayStartHour, dayStartMinute) => {
   return listText;
 };
 
+const userStreakUpdatedInPastWeek = (user) => {
+  if (!user || !user.lastUpdate) return false;
+  const userLastUpdate = new Date(user.lastUpdate);
+  const timeSinceLastUpdate = new Date() - userLastUpdate;
+  return timeSinceLastUpdate < 7 * ONE_DAY && isWeekday(userLastUpdate);
+};
+
 const getUsersWhoPostedInThePastWeek = () => {
   let listText = "";
   const users = db.get("users").value();

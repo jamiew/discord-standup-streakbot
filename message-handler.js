@@ -48,7 +48,12 @@ const handleDuplicatePost = async (msg, lastUpdate) => {
   await msg.reply({ content: reply });
 };
 
-const createThreadForPost = async (msg, config, streakCount) => {
+const createThreadForPost = async (
+  msg,
+  config,
+  streakCount,
+  previousUpdateDate
+) => {
   try {
     // Create the thread first using the consistent naming function
     const thread = await msg.startThread({
@@ -73,7 +78,11 @@ const createThreadForPost = async (msg, config, streakCount) => {
     // Format streak message
     const streakText =
       streakCount === 1 ? "first day" : `${streakCount} day streak`;
-    const lastUpdateDate = new Date(freshUserData.lastUpdate).toLocaleString();
+
+    // Format last update message
+    const lastUpdateText = previousUpdateDate
+      ? `Last Updated: ${new Date(previousUpdateDate).toLocaleString()}`
+      : "First post!";
 
     // Format reward info
     const weekNumber = Math.floor((streakCount - 1) / 5) + 1;
@@ -81,7 +90,7 @@ const createThreadForPost = async (msg, config, streakCount) => {
 
     // Send thread messages with detailed info
     await thread.send(`- Your current Streak: ${streakText}
-- Last Updated: ${lastUpdateDate}
+- ${lastUpdateText}
 - Reward for this post: ${rewardInfo}
 
 This thread will automatically archive in 24 hours
@@ -114,6 +123,9 @@ const processStandupMessage = async (msg, config) => {
   // Get user data first
   const dbUser = getOrCreateDBUser(msg);
   const userData = dbUser.value();
+
+  // Store the previous update time before any changes
+  const previousUpdateDate = userData?.lastUpdate;
 
   // Check if user has already posted today
   const canPost = userStreakNotAlreadyUpdatedToday(
@@ -148,7 +160,12 @@ const processStandupMessage = async (msg, config) => {
       lastUpdate: updatedUser.lastUpdate,
     });
 
-    await createThreadForPost(msg, config, updatedUser.streak || 1);
+    await createThreadForPost(
+      msg,
+      config,
+      updatedUser.streak || 1,
+      previousUpdateDate
+    );
   }
 };
 

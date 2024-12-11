@@ -22,16 +22,24 @@ const userStreakLastUpdatedLastWeekday = (
   if (!user || !user.lastUpdate) {
     return false;
   }
+
   const mostRecentWeekdayStart = getMostRecentWeekdayStart(
     dayStartHour,
     dayStartMinute
   );
   const userLastUpdate = new Date(user.lastUpdate);
-  const timeBeforeWeekdayStart =
-    mostRecentWeekdayStart.getTime() - userLastUpdate.getTime();
-  const didLastUpdateLastWeekday =
-    timeBeforeWeekdayStart > 0 && timeBeforeWeekdayStart <= 3 * ONE_DAY;
-  return didLastUpdateLastWeekday;
+
+  // If the last update was today, we need to look at yesterday
+  const referenceDate = new Date(mostRecentWeekdayStart);
+  if (userLastUpdate.toDateString() === new Date().toDateString()) {
+    referenceDate.setDate(referenceDate.getDate() - 1);
+    while (!isWeekday(referenceDate)) {
+      referenceDate.setDate(referenceDate.getDate() - 1);
+    }
+  }
+
+  // Check if the last update was on the previous weekday
+  return userLastUpdate.toDateString() === referenceDate.toDateString();
 };
 
 const userStreakStillNeedsUpdatingToday = (
@@ -77,39 +85,30 @@ const addToStreak = (msg, dbUser) => {
     return false;
   }
 
-  const streakData = {
-    streak: 1,
-    bestStreak: 1,
-  };
-
-  let isNewBest = true;
-  let isNewStreak = false;
   const user = dbUser.value();
-
   if (!user) {
     console.error(`Error: No user data found for ${msg.author.username}`);
     return false;
   }
 
-  if (!user.bestStreak) {
-    console.log(`${msg.author.username} started their first streak`);
-    isNewStreak = true;
-  } else if (!userStreakLastUpdatedLastWeekday(user)) {
-    console.log(`${msg.author.username} started a new streak`);
-    isNewStreak = true;
-    streakData.bestStreak = user.bestStreak;
-    isNewBest = false;
-  } else {
+  let streakData = {
+    streak: 1,
+    bestStreak: Math.max(1, user.bestStreak || 1),
+  };
+
+  let isNewBest = false;
+  let isNewStreak = true;
+
+  // Check if this is a streak continuation
+  if (user.streak && userStreakLastUpdatedLastWeekday(user)) {
     const newLevel = user.streak + 1;
-    const currentBest = user.bestStreak;
     streakData.streak = newLevel;
-    streakData.bestStreak = Math.max(newLevel, currentBest);
+    streakData.bestStreak = Math.max(newLevel, user.bestStreak || 1);
+    isNewStreak = false;
+    isNewBest = newLevel > (user.bestStreak || 0);
     console.log(`${msg.author.username} continued a streak to ${newLevel}`);
-    if (newLevel > currentBest) {
-      console.log(`\t...and it's a new best! (${newLevel})`);
-    } else {
-      isNewBest = false;
-    }
+  } else {
+    console.log(`${msg.author.username} started a new streak`);
   }
 
   if (isNewStreak) {

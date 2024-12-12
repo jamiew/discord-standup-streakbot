@@ -23,9 +23,7 @@ module.exports = {
 
       const now = new Date();
       const lastUpdate = new Date(user.lastUpdate);
-      const lastWeekday = getMostRecentWeekdayStart(0, 0); // Using 00:00 as reference
       const hasPostedToday = lastUpdate.toDateString() === now.toDateString();
-      const postedLastWeekday = userStreakLastUpdatedLastWeekday(user, 0, 0);
 
       let debugInfo = "**🔍 Streak Debug Info**\n\n";
       debugInfo += `**User:** ${user.username}\n`;
@@ -33,11 +31,7 @@ module.exports = {
       debugInfo += `**Best Streak:** ${user.bestStreak || 0}\n`;
       debugInfo += `**Last Update:** ${lastUpdate.toLocaleString()}\n`;
       debugInfo += `**Posted Today:** ${hasPostedToday ? "Yes" : "No"}\n`;
-      debugInfo += `**Posted Last Weekday:** ${
-        postedLastWeekday ? "Yes" : "No"
-      }\n`;
       debugInfo += `**Today is Weekday:** ${isWeekday(now) ? "Yes" : "No"}\n`;
-      debugInfo += `**Last Weekday:** ${lastWeekday.toLocaleString()}\n`;
 
       await interaction.reply({
         content: debugInfo,

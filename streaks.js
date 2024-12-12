@@ -14,6 +14,15 @@ const userStreakNotAlreadyUpdatedToday = (
   return lastUpdate.toDateString() !== now.toDateString();
 };
 
+const getLastWeekdayDate = (fromDate) => {
+  const date = new Date(fromDate);
+  date.setDate(date.getDate() - 1);
+  while (!isWeekday(date)) {
+    date.setDate(date.getDate() - 1);
+  }
+  return date;
+};
+
 const userStreakLastUpdatedLastWeekday = (
   user,
   dayStartHour,
@@ -23,23 +32,25 @@ const userStreakLastUpdatedLastWeekday = (
     return false;
   }
 
-  const mostRecentWeekdayStart = getMostRecentWeekdayStart(
-    dayStartHour,
-    dayStartMinute
-  );
   const userLastUpdate = new Date(user.lastUpdate);
+  const today = new Date();
 
-  // If the last update was today, we need to look at yesterday
-  const referenceDate = new Date(mostRecentWeekdayStart);
-  if (userLastUpdate.toDateString() === new Date().toDateString()) {
-    referenceDate.setDate(referenceDate.getDate() - 1);
-    while (!isWeekday(referenceDate)) {
-      referenceDate.setDate(referenceDate.getDate() - 1);
-    }
+  // If the last update was today, check if they posted yesterday (last weekday)
+  if (userLastUpdate.toDateString() === today.toDateString()) {
+    const lastWeekday = getLastWeekdayDate(today);
+    // Look for any updates on the last weekday
+    const users = db.get("users").value();
+    const userHistory = users.find((u) => u.userID === user.userID);
+    if (!userHistory) return false;
+
+    const lastWeekdayStr = lastWeekday.toDateString();
+    const userLastUpdateDate = new Date(userHistory.lastUpdate);
+    return userLastUpdateDate.toDateString() === lastWeekdayStr;
   }
 
-  // Check if the last update was on the previous weekday
-  return userLastUpdate.toDateString() === referenceDate.toDateString();
+  // If the last update wasn't today, it needs to be the last weekday
+  const lastWeekday = getLastWeekdayDate(today);
+  return userLastUpdate.toDateString() === lastWeekday.toDateString();
 };
 
 const userStreakStillNeedsUpdatingToday = (
@@ -89,6 +100,14 @@ const addToStreak = (msg, dbUser) => {
   if (!user) {
     console.error(`Error: No user data found for ${msg.author.username}`);
     return false;
+  }
+
+  // Don't update streak if already posted today
+  if (!userStreakNotAlreadyUpdatedToday(user)) {
+    console.log(
+      `${msg.author.username} already posted today, maintaining streak at ${user.streak}`
+    );
+    return true;
   }
 
   let streakData = {
@@ -210,9 +229,8 @@ const getUsersWhoPostedInThePastWeek = () => {
 
     listText += "Users who have posted in the past week:\n";
     pastWeekUsers.forEach((user) => {
-      listText += `\n\t${user.username} (current streak: ${
-        user.streak || 0
-      }, best streak: ${user.bestStreak})`;
+      const streak = user.streak || 0;
+      listText += `\n\t${user.username} (current streak: ${streak}, best streak: ${user.bestStreak})`;
     });
     listText += "\n\nKeep up the good work!";
   } else {

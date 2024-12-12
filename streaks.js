@@ -64,35 +64,9 @@ const userStreakStillNeedsUpdatingToday = (
   );
 };
 
-const updateLastUpdate = (msg, dbUser) => {
-  console.log(`Updating lastUpdate for ${msg.author.username}`);
-  const now = new Date();
-  const updateData = {
-    lastUpdate: now.toISOString(), // Ensure consistent date format
-  };
-
-  // Write to database
-  console.log(`Writing lastUpdate for ${msg.author.username}:`, updateData);
-  dbUser.assign(updateData).write();
-
-  // Verify the update by reading fresh data
-  const verifyUser = dbUser.value();
-  if (!verifyUser) {
-    console.error(
-      `Error: Failed to verify lastUpdate for ${msg.author.username}`
-    );
-    return false;
-  }
-
-  console.log(`Verified lastUpdate for ${msg.author.username}:`, {
-    lastUpdate: verifyUser.lastUpdate,
-  });
-
-  return true;
-};
-
 const addToStreak = (msg, dbUser) => {
   if (!isWeekday(new Date())) {
+    console.warn("addToStreak: ignoring weekday");
     return false;
   }
 
@@ -110,9 +84,11 @@ const addToStreak = (msg, dbUser) => {
     return true;
   }
 
+  const now = new Date();
   let streakData = {
     streak: 1,
     bestStreak: Math.max(1, user.bestStreak || 1),
+    lastUpdate: now.toISOString(), // Include lastUpdate in the streak update
   };
 
   let isNewBest = false;
@@ -156,9 +132,13 @@ const addToStreak = (msg, dbUser) => {
   console.log(`Verified streak update for ${msg.author.username}:`, {
     streak: verifyUser.streak,
     bestStreak: verifyUser.bestStreak,
+    lastUpdate: verifyUser.lastUpdate,
   });
 
-  return true;
+  return {
+    streak: verifyUser.streak,
+    bestStreak: verifyUser.bestStreak,
+  };
 };
 
 const getUsersWhoPostedYesterday = (dayStartHour, dayStartMinute) => {
@@ -247,6 +227,5 @@ module.exports = {
   getUsersWhoCouldLoseTheirStreak,
   getUsersWhoPostedYesterday,
   getUsersWhoPostedInThePastWeek,
-  updateLastUpdate,
   addToStreak,
 };

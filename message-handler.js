@@ -1,9 +1,5 @@
 const { getOrCreateDBUser } = require("./db");
-const {
-  addToStreak,
-  userStreakNotAlreadyUpdatedToday,
-  updateLastUpdate,
-} = require("./streaks");
+const { addToStreak, userStreakNotAlreadyUpdatedToday } = require("./streaks");
 const { awardGlifbux, getBalance } = require("./economy");
 const { addReactions } = require("./reactions");
 const { calculateGlifbuxReward } = require("./utils");
@@ -65,12 +61,6 @@ const createThreadForPost = async (
 
     // Then add reactions to the original standup post
     await addReactions(msg, 2);
-
-    // Get fresh user data from database
-    const freshUserData = db
-      .get("users")
-      .find({ userID: msg.author.id })
-      .value();
 
     // Calculate glifbux reward based on streak
     const glifbuxReward = calculateGlifbuxReward(streakCount);
@@ -141,15 +131,8 @@ const processStandupMessage = async (msg, config) => {
 
   console.log(`Valid new standup post - processing for ${msg.author.username}`);
 
-  // Always update lastUpdate for valid posts
-  const lastUpdateSuccess = updateLastUpdate(msg, dbUser);
-
-  if (!lastUpdateSuccess) {
-    console.error(`Failed to update lastUpdate for ${msg.author.username}`);
-    return;
-  }
-
   // Try to update streak (this will only succeed on valid weekdays)
+  // Note: lastUpdate is now handled inside addToStreak
   const streakUpdated = addToStreak(msg, dbUser);
 
   if (streakUpdated) {

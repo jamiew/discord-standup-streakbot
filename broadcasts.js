@@ -57,7 +57,7 @@ const broadcastHelp = (channel, guildId, channelName) => {
   response += "- /inventory - to see your items (or someone else)\n";
   response += "- /craft - test out making an item... WIP\n";
 
-  reponse += "\n\n**Rewards:**\n";
+  response += "\n\n**Rewards:**\n";
   response +=
     "Daily rewards increase as your streak gets longer. Here's the breakdown:\n\n";
   rewardTable.forEach(({ week, reward, example }) => {

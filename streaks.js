@@ -206,11 +206,13 @@ const getUsersWhoPostedInThePastWeek = () => {
 
   const pastWeekUsers = users.filter(userStreakUpdatedInPastWeek);
   if (pastWeekUsers.length > 0) {
-    pastWeekUsers.sort((a, b) => b.bestStreak - a.bestStreak);
+    pastWeekUsers.sort((a, b) => b.streak - a.streak);
 
     listText += "Users who have posted in the past week:\n";
     pastWeekUsers.forEach((user) => {
-      listText += `\n\t${user.username} (best streak: ${user.bestStreak})`;
+      listText += `\n\t${user.username} (current streak: ${
+        user.streak || 0
+      }, best streak: ${user.bestStreak})`;
     });
     listText += "\n\nKeep up the good work!";
   } else {

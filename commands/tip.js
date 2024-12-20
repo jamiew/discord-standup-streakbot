@@ -17,6 +17,12 @@ module.exports = {
         .setDescription("Amount of glifbux to tip")
         .setRequired(true)
         .setMinValue(1)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("message")
+        .setDescription("Why are you giving them a tip?")
+        .setRequired(true)
     ),
   async execute(interaction) {
     const targetUser = interaction.options.getUser("user");
@@ -34,8 +40,9 @@ module.exports = {
     try {
       await sendGlifbux(interaction.user, targetUser, amount);
       const newBalance = await getBalance(interaction.user);
+      const message = interaction.options.getString("message");
       await interaction.reply(
-        `Successfully tipped ${amount} glifbux to ${targetUser}! Your new balance: ${newBalance} glifbux 💸`
+        `Successfully tipped ${amount} glifbux to ${targetUser} for: "${message}"! Your new balance: ${newBalance} glifbux 💸`
       );
     } catch (error) {
       if (error.message === "Insufficient glifbux") {

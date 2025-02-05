@@ -104,6 +104,8 @@ Run \`/help\` for more info`);
 };
 
 const processStandupMessage = async (msg, config) => {
+  // Default createThreads to false if not specified in config
+  const createThreads = config.createThreads ?? false;
   // Ignore if not in the right channel/guild
   if (msg.author.bot) return;
   if (msg.guildId !== process.env.GUILD_ID) return;
@@ -143,12 +145,29 @@ const processStandupMessage = async (msg, config) => {
       lastUpdate: updatedUser.lastUpdate,
     });
 
-    await createThreadForPost(
-      msg,
-      config,
-      updatedUser.streak || 1,
-      previousUpdateDate
-    );
+    // Add reactions regardless of thread creation
+    await addReactions(msg, 2);
+
+    // Calculate and award glifbux
+    const streakCount = updatedUser.streak || 1;
+    const glifbuxReward = calculateGlifbuxReward(streakCount);
+
+    try {
+      await awardGlifbux(msg.author, glifbuxReward);
+      console.log(
+        `Awarded ${glifbuxReward} glifbux to ${msg.author.username} for standup post (streak: ${streakCount})`
+      );
+    } catch (error) {
+      console.error("Error awarding glifbux:", error);
+      await msg.reply(
+        "❌ There was an error awarding glifbux for this post. The API might be down."
+      );
+    }
+
+    // Only create thread if enabled in config
+    if (createThreads) {
+      await createThreadForPost(msg, config, streakCount, previousUpdateDate);
+    }
   }
 };
 
